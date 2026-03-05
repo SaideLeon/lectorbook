@@ -11,8 +11,27 @@ export class AppError extends Error {
   }
 }
 
+function serializeUnknownError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
+    };
+  }
+
+  return { value: error };
+}
+
 export function jsonError(error: unknown) {
   if (error instanceof AppError) {
+    console.error('[API AppError]', {
+      message: error.message,
+      statusCode: error.statusCode,
+      details: error.details,
+    });
+
     return NextResponse.json(
       { error: error.message, details: error.details, code: error.statusCode },
       { status: error.statusCode },
@@ -20,6 +39,12 @@ export function jsonError(error: unknown) {
   }
 
   const message = error instanceof Error ? error.message : 'Internal Server Error';
-  console.error('[API Error]', error);
-  return NextResponse.json({ error: message, code: 500 }, { status: 500 });
+  const debugId = `api_${Date.now().toString(36)}`;
+
+  console.error('[API Error]', {
+    debugId,
+    ...serializeUnknownError(error),
+  });
+
+  return NextResponse.json({ error: message, code: 500, debugId }, { status: 500 });
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, jsonError } from '@/app/api/_utils';
-import { getAppUrl } from '@/server/github';
+import { extractGithubErrorDetails, getAppUrl } from '@/server/github';
 
 export const runtime = 'nodejs';
 
@@ -10,8 +10,17 @@ export async function GET(req: NextRequest) {
     const githubClientId = process.env.GITHUB_CLIENT_ID;
     const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
 
-    if (!code) throw new AppError('No code provided', 400);
-    if (!githubClientId || !githubClientSecret) throw new AppError('GitHub OAuth not configured', 500);
+    if (!code) throw new AppError('No code provided', 400, { queryParam: 'code' });
+
+    if (!githubClientId || !githubClientSecret) {
+      throw new AppError('GitHub OAuth not configured', 500, {
+        missingEnvVars: [
+          !githubClientId ? 'GITHUB_CLIENT_ID' : null,
+          !githubClientSecret ? 'GITHUB_CLIENT_SECRET' : null,
+        ].filter(Boolean),
+        hasAppUrl: Boolean(process.env.APP_URL),
+      });
+    }
 
     const redirectUri = `${getAppUrl(req)}/api/github/auth/callback`;
 
@@ -21,8 +30,16 @@ export async function GET(req: NextRequest) {
       body: JSON.stringify({ client_id: githubClientId, client_secret: githubClientSecret, code, redirect_uri: redirectUri }),
     });
 
+    if (!tokenRes.ok) {
+      throw new AppError('GitHub OAuth token exchange failed', tokenRes.status, await extractGithubErrorDetails(tokenRes));
+    }
+
     const tokenData = await tokenRes.json();
-    if (tokenData.error) throw new AppError(tokenData.error_description || tokenData.error, 400);
+    if (tokenData.error) {
+      throw new AppError(tokenData.error_description || tokenData.error, 400, {
+        githubError: tokenData,
+      });
+    }
 
     const html = `
       <html><body>

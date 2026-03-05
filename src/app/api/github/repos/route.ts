@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, jsonError } from '@/app/api/_utils';
+import { extractGithubErrorDetails } from '@/server/github';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
     const userToken = req.headers.get('x-github-token');
-    if (!userToken) throw new AppError('GitHub token is required to list repositories', 401);
+    if (!userToken) {
+      throw new AppError('GitHub token is required to list repositories', 401, {
+        reason: 'missing_header',
+        header: 'x-github-token',
+      });
+    }
 
     const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100&type=all', {
       headers: {
@@ -17,8 +23,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new AppError('Failed to fetch repositories', response.status, error);
+      throw new AppError('Failed to fetch repositories', response.status, await extractGithubErrorDetails(response));
     }
 
     return NextResponse.json(await response.json());

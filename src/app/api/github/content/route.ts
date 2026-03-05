@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
       headers: getGithubHeaders(req),
     });
 
-    if (!response.ok) throw new AppError('Failed to fetch file content', response.status);
+    if (!response.ok) {
+      throw new AppError('Failed to fetch file content', response.status, {
+        status: response.status,
+        statusText: response.statusText,
+        githubRequestId: response.headers.get('x-github-request-id') || undefined,
+      });
+    }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     if (isBinaryBuffer(buffer)) {

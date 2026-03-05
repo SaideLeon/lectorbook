@@ -7,7 +7,12 @@ export const runtime = 'nodejs';
 export async function GET(req: NextRequest) {
   try {
     const githubClientId = process.env.GITHUB_CLIENT_ID;
-    if (!githubClientId) throw new AppError('GitHub OAuth is not configured', 500);
+    if (!githubClientId) {
+      throw new AppError('GitHub OAuth is not configured', 500, {
+        missingEnvVars: ['GITHUB_CLIENT_ID'],
+        hasAppUrl: Boolean(process.env.APP_URL),
+      });
+    }
 
     const redirectUri = `${getAppUrl(req)}/api/github/auth/callback`;
     const params = new URLSearchParams({

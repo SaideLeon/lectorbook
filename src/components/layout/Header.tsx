@@ -30,30 +30,43 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  const formatApiError = async (res: Response, fallbackMessage: string) => {
+    try {
+      const data = await res.json();
+      const baseMessage = data.error || fallbackMessage;
+      const details = data.details ? ` | detalhes: ${JSON.stringify(data.details)}` : '';
+      const debugId = data.debugId ? ` | debugId: ${data.debugId}` : '';
+      return `${baseMessage}${details}${debugId}`;
+    } catch {
+      return `${fallbackMessage} (${res.status} ${res.statusText})`;
+    }
+  };
+
   const handleSaveToken = async () => {
     if (githubToken.trim()) {
       const token = githubToken.trim();
       localStorage.setItem('github_token', token);
-      
+
       try {
-        setGithubStatus("Validando token...");
+        setGithubStatus('Validando token...');
         const res = await fetch('/api/github/repos', {
           headers: { 'x-github-token': token }
         });
-        
+
         if (res.ok) {
-          setGithubStatus("Sucesso! Conectado ao GitHub.");
+          setGithubStatus('Sucesso! Conectado ao GitHub.');
           window.dispatchEvent(new Event('github_token_updated'));
         } else {
-          setGithubStatus("Erro: Token inválido ou sem permissão.");
+          const errorMessage = await formatApiError(res, 'Erro ao validar token GitHub');
+          setGithubStatus(`Erro: ${errorMessage}`);
         }
       } catch (err) {
-        setGithubStatus("Erro ao conectar com GitHub.");
+        setGithubStatus(`Erro ao conectar com GitHub: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
       }
-      setTimeout(() => setGithubStatus(null), 3000);
+      setTimeout(() => setGithubStatus(null), 7000);
     } else {
       localStorage.removeItem('github_token');
-      setGithubStatus("Token removido.");
+      setGithubStatus('Token removido.');
       setTimeout(() => setGithubStatus(null), 3000);
     }
   };
@@ -93,21 +106,27 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
   const handleConnectGithub = async () => {
     try {
       const res = await fetch('/api/github/auth/url');
-      if (!res.ok) throw new Error('Falha ao obter URL de autenticação');
+      if (!res.ok) {
+        const errorMessage = await formatApiError(res, 'Falha ao obter URL de autenticação GitHub');
+        throw new Error(errorMessage);
+      }
+
       const { url } = await res.json();
-      
+
       const width = 600;
       const height = 700;
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
-      
+
       window.open(
         url,
         'github_auth',
         `width=${width},height=${height},left=${left},top=${top}`
       );
     } catch (err) {
-      console.error("Erro ao conectar GitHub:", err);
+      const message = err instanceof Error ? err.message : 'erro desconhecido';
+      setGithubStatus(`Erro OAuth: ${message}`);
+      console.error('Erro ao conectar GitHub:', err);
     }
   };
 

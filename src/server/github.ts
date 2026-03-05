@@ -12,6 +12,30 @@ export function getGithubHeaders(req: NextRequest) {
   return headers;
 }
 
+export async function extractGithubErrorDetails(response: Response) {
+  const requestId = response.headers.get('x-github-request-id') || undefined;
+  const rateLimitRemaining = response.headers.get('x-ratelimit-remaining') || undefined;
+  const rateLimitReset = response.headers.get('x-ratelimit-reset') || undefined;
+
+  const rawBody = await response.text();
+  let parsedBody: unknown = rawBody;
+
+  try {
+    parsedBody = JSON.parse(rawBody);
+  } catch {
+    parsedBody = rawBody;
+  }
+
+  return {
+    status: response.status,
+    statusText: response.statusText,
+    requestId,
+    rateLimitRemaining,
+    rateLimitReset,
+    githubError: parsedBody,
+  };
+}
+
 export function getAppUrl(req: NextRequest) {
   return process.env.APP_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
 }
