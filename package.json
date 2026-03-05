@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
+    "build": "next build && rm -rf dist && cp -r .next dist",
     "start": "next start -p 3000",
-    "clean": "rm -rf .next",
+    "clean": "rm -rf .next dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
