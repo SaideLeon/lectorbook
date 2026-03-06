@@ -1,277 +1,102 @@
-import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Github, Search, Loader2, Lock, Unlock, Star, GitFork, RefreshCw, Filter } from 'lucide-react';
-import { githubApi } from '@/services/github.api';
+import { useState } from 'react';
+import { motion } from 'motion/react';
+import { Upload, Link as LinkIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type InputMode = 'url' | 'pdf' | 'text';
 
 export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) => void, isLoading: boolean }) => {
+  const [mode, setMode] = useState<InputMode>('url');
   const [url, setUrl] = useState('');
-  const [userRepos, setUserRepos] = useState<any[]>([]);
-  const [isLoadingRepos, setIsLoadingRepos] = useState(false);
-  const [repoError, setRepoError] = useState<string | null>(null);
-  const [hasToken, setHasToken] = useState(false);
-  const [repoSearch, setRepoSearch] = useState('');
-  const [showAllRepos, setShowAllRepos] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('github_token');
-    setHasToken(!!token);
-
-    if (token) {
-      loadUserRepos();
-    }
-  }, []);
-
-  const loadUserRepos = async () => {
-    setIsLoadingRepos(true);
-    setRepoError(null);
-    try {
-      const repos = await githubApi.getUserRepos();
-      setUserRepos(repos);
-    } catch (error: any) {
-      console.error("Failed to load repos", error);
-      setRepoError(error.message || "Falha ao buscar repositórios");
-    } finally {
-      setIsLoadingRepos(false);
-    }
-  };
-
-  const handleConnectGithub = async () => {
-    try {
-      const res = await fetch('/api/github/auth/url');
-      if (!res.ok) throw new Error('Falha ao obter URL de autenticação');
-      const { url } = await res.json();
-      
-      const width = 600;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      
-      window.open(
-        url,
-        'github_auth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-    } catch (err) {
-      console.error("Erro ao conectar GitHub:", err);
-    }
-  };
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GITHUB_AUTH_SUCCESS') {
-        setHasToken(true);
-        loadUserRepos();
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  useEffect(() => {
-    const handleTokenUpdate = () => {
-      const token = localStorage.getItem('github_token');
-      setHasToken(!!token);
-      if (token) loadUserRepos();
-    };
-    window.addEventListener('github_token_updated', handleTokenUpdate);
-    return () => window.removeEventListener('github_token_updated', handleTokenUpdate);
-  }, []);
-
-  const filteredRepos = useMemo(() => {
-    return userRepos.filter(repo => 
-      repo.full_name.toLowerCase().includes(repoSearch.toLowerCase()) ||
-      (repo.description && repo.description.toLowerCase().includes(repoSearch.toLowerCase()))
-    );
-  }, [userRepos, repoSearch]);
+  const [textContent, setTextContent] = useState('');
+  const [selectedPdfName, setSelectedPdfName] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (url.trim()) onAnalyze(url);
+    if (mode !== 'url') return;
+    if (url.trim()) onAnalyze(url.trim());
   };
 
-  const displayedRepos = showAllRepos ? filteredRepos : filteredRepos.slice(0, 6);
+  const modeButtonClasses = (value: InputMode) => cn(
+    'h-14 px-8 rounded-2xl border text-3xl tracking-wide transition-colors',
+    mode === value
+      ? 'border-indigo-500 bg-indigo-500/15 text-indigo-300'
+      : 'border-white/15 bg-[#0d0f14] text-gray-400 hover:text-gray-200 hover:border-white/30'
+  );
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 py-12">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+    <div className="flex min-h-full items-start justify-center text-center px-4 pt-10 pb-16 md:pt-16">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-5xl w-full space-y-12"
+        className="w-full max-w-4xl space-y-12"
       >
-        <div className="space-y-4">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
-            Transforme um repositório GitHub na sua biblioteca de estudos
-          </h1>
-          <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-            Use um repositório com PDFs, arquivos .md e .txt para ler materiais, explorar conteúdos e conversar com o Lectorbook como um tutor.
+        <div className="space-y-5">
+          <h1 className="text-6xl md:text-7xl font-semibold tracking-tight text-gray-300">Lectorbook</h1>
+          <p className="text-5xl md:text-6xl text-gray-400 max-w-3xl mx-auto leading-snug">
+            Leia e converse com artigos usando IA profunda
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="relative max-w-xl mx-auto w-full">
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl opacity-30 group-hover:opacity-50 transition duration-500 blur"></div>
-            <div className="relative flex items-center bg-[#111] rounded-xl border border-white/10 p-1.5 md:p-2">
-              <Github className="w-5 h-5 md:w-6 md:h-6 text-gray-400 ml-2 md:ml-3 shrink-0" />
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Link do repositório com seus documentos..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 px-2 md:px-4 py-2 text-sm md:text-base min-w-0"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !url}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 md:px-6 py-2 md:py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                <span className="hidden md:inline">Analisar</span>
-              </button>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={() => setMode('url')} className={modeButtonClasses('url')}>URL</button>
+            <button type="button" onClick={() => setMode('pdf')} className={modeButtonClasses('pdf')}>PDF UPLOAD</button>
+            <button type="button" onClick={() => setMode('text')} className={modeButtonClasses('text')}>TEXTO</button>
           </div>
-        </form>
-        
-        {!hasToken && (
-          <div className="space-y-6">
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs md:text-sm text-gray-500">
-              <span>Tente:</span>
-              <button onClick={() => setUrl('https://github.com/facebook/react')} className="hover:text-indigo-400 transition-colors">facebook/react</button>
-              <button onClick={() => setUrl('https://github.com/shadcn-ui/ui')} className="hover:text-indigo-400 transition-colors">shadcn-ui/ui</button>
-            </div>
-            
-            <div className="pt-4">
-              <p className="text-xs text-gray-600 mb-3">Quer navegar nos seus próprios repositórios?</p>
-              <button 
-                onClick={handleConnectGithub}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs text-gray-400 hover:text-white transition-all"
-              >
-                <Github className="w-3 h-3" />
-                Conectar com GitHub (OAuth)
-              </button>
-            </div>
-          </div>
-        )}
 
-        {hasToken && (
-          <div className="mt-16 pt-12 border-t border-white/5 space-y-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                <Github className="w-6 h-6 text-indigo-400" />
-                Seus Repositórios
-              </h3>
-              
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
-                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input 
-                    type="text"
-                    value={repoSearch}
-                    onChange={(e) => setRepoSearch(e.target.value)}
-                    placeholder="Filtrar repositórios..."
-                    className="w-full bg-[#111] border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+          <div className="max-w-3xl mx-auto">
+            {mode === 'url' && (
+              <div className="h-[340px] rounded-3xl border border-white/15 bg-[#0d0f14] p-6 flex items-start">
+                <div className="w-full flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                  <LinkIcon className="w-5 h-5 text-gray-500 shrink-0" />
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="Cole aqui a URL do artigo"
+                    className="w-full bg-transparent outline-none text-gray-200 placeholder:text-gray-500"
+                    disabled={isLoading}
                   />
                 </div>
-                <button 
-                  onClick={loadUserRepos}
-                  disabled={isLoadingRepos}
-                  className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-gray-400 hover:text-white transition-all disabled:opacity-50"
-                  title="Atualizar lista"
-                >
-                  <RefreshCw className={repoSearch ? "" : (isLoadingRepos ? "animate-spin" : "") + " w-4 h-4"} />
-                </button>
-              </div>
-            </div>
-            
-            {isLoadingRepos ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
-                <p className="text-gray-500 text-sm animate-pulse">Sincronizando com o GitHub...</p>
-              </div>
-            ) : repoError ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <p className="text-red-400 text-sm font-medium">{repoError}</p>
-                <button 
-                  onClick={loadUserRepos}
-                  className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm transition-colors"
-                >
-                  Tentar novamente
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
-                  <AnimatePresence mode="popLayout">
-                    {displayedRepos.map((repo) => (
-                      <motion.button
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        key={repo.id}
-                        onClick={() => onAnalyze(repo.html_url)}
-                        className="group flex flex-col gap-3 p-5 bg-[#111] border border-white/5 hover:border-indigo-500/50 rounded-xl transition-all hover:bg-white/5 relative overflow-hidden"
-                      >
-                        <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Search className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {repo.private ? (
-                              <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            ) : (
-                              <Unlock className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                            )}
-                            <span className="font-semibold text-sm truncate text-gray-100 group-hover:text-indigo-300 transition-colors">
-                              {repo.name}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <p className="text-xs text-gray-500 line-clamp-2 h-8 leading-relaxed">
-                          {repo.description || "Sem descrição disponível"}
-                        </p>
-                        
-                        <div className="flex items-center gap-4 text-[10px] font-medium text-gray-500 mt-auto pt-3 border-t border-white/5">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                            {repo.language || 'N/A'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 text-amber-500/50" />
-                            {repo.stargazers_count}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <GitFork className="w-3 h-3 text-gray-600" />
-                            {repo.forks_count}
-                          </div>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </AnimatePresence>
-                </div>
-
-                {filteredRepos.length > 6 && (
-                  <button
-                    onClick={() => setShowAllRepos(!showAllRepos)}
-                    className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors py-2 px-4 rounded-lg bg-indigo-500/5 hover:bg-indigo-500/10 border border-indigo-500/20"
-                  >
-                    {showAllRepos ? "Mostrar menos" : `Ver todos os ${filteredRepos.length} repositórios`}
-                  </button>
-                )}
-
-                {filteredRepos.length === 0 && !isLoadingRepos && (
-                  <div className="py-20 text-center space-y-2">
-                    <Github className="w-12 h-12 text-gray-800 mx-auto mb-4" />
-                    <p className="text-gray-400 font-medium">Nenhum repositório corresponde à sua busca.</p>
-                    <p className="text-gray-600 text-sm">Tente termos mais genéricos ou limpe o filtro.</p>
-                  </div>
-                )}
               </div>
             )}
+
+            {mode === 'text' && (
+              <textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                placeholder="Cole aqui o conteúdo do artigo"
+                className="h-[340px] w-full rounded-3xl border border-white/15 bg-[#0d0f14] p-6 text-4xl text-gray-200 placeholder:text-gray-500 resize-none outline-none focus:border-indigo-500/40"
+              />
+            )}
+
+            {mode === 'pdf' && (
+              <label className="h-[340px] rounded-3xl border-2 border-dashed border-white/20 bg-[#0d0f14] p-6 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-indigo-500/40 transition-colors">
+                <Upload className="w-12 h-12 text-gray-500" />
+                <span className="text-4xl text-gray-400">
+                  {selectedPdfName || 'Clique para selecionar .pdf'}
+                </span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => setSelectedPdfName(e.target.files?.[0]?.name || null)}
+                />
+              </label>
+            )}
           </div>
-        )}
+
+          <button
+            type={mode === 'url' ? 'submit' : 'button'}
+            disabled={isLoading || (mode === 'url' && !url.trim()) || mode !== 'url'}
+            className="h-16 px-12 rounded-2xl text-4xl bg-indigo-700 text-indigo-200 hover:bg-indigo-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            Analisar
+          </button>
+        </form>
+
+        <p className="text-4xl text-gray-500">Exemplos rápidos: NYT · ArXiv · Medium · PubMed</p>
       </motion.div>
     </div>
   );
