@@ -11,11 +11,16 @@ export async function GET(req: NextRequest) {
     const repo = req.nextUrl.searchParams.get('repo');
     const filePath = req.nextUrl.searchParams.get('path');
     const branch = req.nextUrl.searchParams.get('branch');
+    const format = req.nextUrl.searchParams.get('format');
 
     if (!owner || !repo || !filePath || !branch) throw new AppError('Missing required parameters', 400);
 
-    const cachedContent = cacheService.getFileContent(owner, repo, branch, filePath);
-    if (cachedContent) return new NextResponse(cachedContent);
+    const shouldReturnPdf = format === 'pdf';
+
+    if (!shouldReturnPdf) {
+      const cachedContent = cacheService.getFileContent(owner, repo, branch, filePath);
+      if (cachedContent) return new NextResponse(cachedContent);
+    }
 
     const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`, {
       headers: getGithubHeaders(req),
@@ -30,6 +35,20 @@ export async function GET(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
+    if (shouldReturnPdf) {
+      const isPdf = buffer.length > 4 && buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
+      if (!isPdf) {
+        throw new AppError('Requested PDF format for a non-PDF file', 400);
+      }
+
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Cache-Control': 'public, max-age=300',
+        },
+      });
+    }
+
     if (isBinaryBuffer(buffer)) {
       return new NextResponse('Binary files are not supported for analysis', { status: 400 });
     }

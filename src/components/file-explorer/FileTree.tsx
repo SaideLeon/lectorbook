@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, FileCode, Folder, FolderOpen, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, FileCode, FileText, Folder, FolderOpen, ChevronRight, ChevronDown } from 'lucide-react';
 import { FileNode } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { buildTree, flattenTree } from '@/utils/file-tree';
@@ -95,6 +95,7 @@ export const FileTree = ({ files, onSelect }: { files: FileNode[], onSelect: (pa
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const node = flatNodes[virtualRow.index];
             const isFolder = node.type === 'tree';
+            const isPdf = node.path.toLowerCase().endsWith('.pdf');
             
             return (
               <div
@@ -140,7 +141,7 @@ export const FileTree = ({ files, onSelect }: { files: FileNode[], onSelect: (pa
                     </span>
                   ) : (
                     <span className="flex items-center gap-2 min-w-0">
-                      <FileCode className="w-4 h-4 text-gray-500 group-hover:text-indigo-400 shrink-0" />
+                      {isPdf ? <FileText className="w-4 h-4 text-red-400/80 group-hover:text-red-400 shrink-0" /> : <FileCode className="w-4 h-4 text-gray-500 group-hover:text-indigo-400 shrink-0" />}
                       <span className="truncate">{node.name}</span>
                     </span>
                   )}
