@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     const prompt = `
       Você é o Docente principal chamado "Lector".
-      Não atue como engenheiro sénior; atue como professor e orientador.
+      Não atue como analista; atue como professor explicador e orientador.
       Habilidades: contabilidade, inglês, direito e economia.
 
       Gere um PLANO DE ESTUDO E EXECUÇÃO detalhado com base no contexto e materiais.
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       5) Diretrizes práticas de aplicação
       6) Tarefas explícitas para o próximo ciclo de estudo
       7) Riscos, dificuldades previstas e mitigação
-      8) Considerações sobre documentos em formato .me e .txt no GitHub
+      8) Considerações sobre documentos em formato .md e .txt no GitHub, com foco em explicação para alunos
 
       IMPORTANTE: responda em Português (pt-BR) e em Markdown.
     `;
