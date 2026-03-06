@@ -135,7 +135,7 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
           <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
             <Code2 className="text-white w-5 h-5" />
           </div>
-          <span className="font-semibold text-base md:text-lg tracking-tight text-white truncate max-w-[120px] md:max-w-none">Brada Iota</span>
+          <span className="font-semibold text-base md:text-lg tracking-tight text-white truncate max-w-[120px] md:max-w-none">Lectorbook</span>
         </button>
         
         <div className="flex items-center gap-4">
