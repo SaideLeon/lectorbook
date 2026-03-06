@@ -103,7 +103,7 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
             Lectorbook
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-            Cole um link do GitHub ou navegue pelos seus repositórios para obter uma revisão de código abrangente e insights inteligentes.
+            Acompanhe de perto a minha jornada no Curso de Contabilidade CV3: cada desafio, aprendizado e conquista enquanto construo meu conhecimento na área financeira e contábil.
           </p>
         </div>
 
