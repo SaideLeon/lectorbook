@@ -9,10 +9,14 @@ export function useAIChat() {
   const [isThinking, setIsThinking] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isGeneratingBlueprint, setIsGeneratingBlueprint] = useState(false);
+  const [processLogs, setProcessLogs] = useState<string[]>([]);
   
-  // API Key Rotation State
   const [apiKeys, setApiKeys] = useState<string[]>([]);
   const [keyIndex, setKeyIndex] = useState(0);
+
+  const appendLog = useCallback((log: string) => {
+    setProcessLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('pt-BR')}] ${log}`]);
+  }, []);
 
   const getNextKey = useCallback(() => {
     if (apiKeys.length > 0) {
@@ -29,14 +33,14 @@ export function useAIChat() {
       const keys = text.split(/\r?\n/).map(k => k.trim()).filter(k => k.length > 20);
       
       if (keys.length === 0) {
-        throw new Error("Nenhuma chave válida encontrada no arquivo.");
+        throw new Error('Nenhuma chave válida encontrada no arquivo.');
       }
       
       setApiKeys(keys);
       setKeyIndex(0);
       return keys.length;
     } catch (err) {
-      console.error("Erro ao ler arquivo de chaves:", err);
+      console.error('Erro ao ler arquivo de chaves:', err);
       throw err;
     }
   }, []);
@@ -45,7 +49,6 @@ export function useAIChat() {
     try {
       const activeKey = getNextKey();
       
-      // Apply text limiter to file contents before sending to AI
       const limitedFiles = files.map(f => ({
         path: f.path,
         content: limitTextContext(f.content)
@@ -55,7 +58,7 @@ export function useAIChat() {
       const analysisText = getResponseText(aiRes);
       
       if (!analysisText) {
-        throw new Error("A resposta da IA veio vazia. Verifique os logs do servidor.");
+        throw new Error('A resposta da IA veio vazia. Verifique os logs do servidor.');
       }
       
       setAnalysis(analysisText);
@@ -64,40 +67,57 @@ export function useAIChat() {
         content: analysisText,
         timestamp: Date.now(),
         relatedLinks: aiRes.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((c: any) => ({
-             title: c.web?.title || "Fonte",
+             title: c.web?.title || 'Fonte',
              url: c.web?.uri
         })).filter((l: any): l is { title: string; url: string } => !!l.url) || []
       }]);
       
       return analysisText;
     } catch (error) {
-      console.error("AI Analysis Error:", error);
+      console.error('AI Analysis Error:', error);
       throw error;
     }
   }, [getNextKey]);
 
-  const sendMessage = useCallback(async (msg: string) => {
+  const sendMessage = useCallback(async (msg: string, contextFiles: { path: string; content: string }[] = []) => {
     const newHistory = [...chatHistory, { role: 'user', content: msg, timestamp: Date.now() } as AnalysisMessage];
     setChatHistory(newHistory);
     setIsThinking(true);
+    setProcessLogs([]);
 
     try {
+      appendLog('Iniciando solicitação ao Docente Lector...');
       const activeKey = getNextKey();
+
+      const limitedContextFiles = contextFiles.map((f) => ({
+        path: f.path,
+        content: limitTextContext(f.content)
+      }));
+
+      if (limitedContextFiles.length > 0) {
+        appendLog(`Contexto automático carregado: ${limitedContextFiles.length} arquivo(s) .md/.txt do GitHub.`);
+      } else {
+        appendLog('Nenhum arquivo .md/.txt disponível no repositório para contexto automático.');
+      }
+
+      appendLog('Enviando contexto e pergunta para o modelo de IA...');
       const response = await thinkAndSuggest(
         newHistory.map(h => ({ role: h.role, content: h.content })),
         msg,
-        analysis || "Nenhum contexto disponível.",
+        analysis || 'Nenhum contexto disponível.',
+        limitedContextFiles,
         activeKey
       );
 
+      appendLog('Resposta recebida. Processando conteúdo e referências...');
       const responseText = getResponseText(response);
       
       if (!responseText) {
-         throw new Error("A resposta da IA veio vazia.");
+         throw new Error('A resposta da IA veio vazia.');
       }
       
       const links = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((c: any) => ({
-        title: c.web?.title || "Fonte",
+        title: c.web?.title || 'Fonte',
         url: c.web?.uri
       })).filter((l: any): l is { title: string; url: string } => !!l.url) || [];
 
@@ -107,17 +127,20 @@ export function useAIChat() {
         timestamp: Date.now(),
         relatedLinks: links
       }]);
+
+      appendLog('Concluído com sucesso.');
     } catch (err) {
       console.error(err);
+      appendLog(`Falha no processamento: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
       setChatHistory(prev => [...prev, {
         role: 'model',
-        content: `Erro: ${err instanceof Error ? err.message : "Erro desconhecido ao processar resposta."}`,
+        content: `Erro: ${err instanceof Error ? err.message : 'Erro desconhecido ao processar resposta.'}`,
         timestamp: Date.now()
       }]);
     } finally {
       setIsThinking(false);
     }
-  }, [chatHistory, analysis, getNextKey]);
+  }, [chatHistory, analysis, getNextKey, appendLog]);
 
   const generateProjectBlueprint = useCallback(async (repoName: string, contextFiles: { path: string, content: string }[]) => {
     if (!analysis) return;
@@ -134,7 +157,7 @@ export function useAIChat() {
       const blueprintText = getResponseText(response);
       
       if (!blueprintText) {
-        throw new Error("A resposta da IA veio vazia.");
+        throw new Error('A resposta da IA veio vazia.');
       }
       
       const blob = new Blob([blueprintText], { type: 'text/markdown' });
@@ -147,7 +170,7 @@ export function useAIChat() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Blueprint generation failed:", err);
+      console.error('Blueprint generation failed:', err);
       throw err;
     } finally {
       setIsGeneratingBlueprint(false);
@@ -159,11 +182,11 @@ export function useAIChat() {
     isThinking,
     analysis,
     isGeneratingBlueprint,
+    processLogs,
     performInitialAnalysis,
     sendMessage,
     generateProjectBlueprint,
     setChatHistory,
-    // API Key Management
     apiKeys,
     keyIndex,
     handleKeyFileUpload

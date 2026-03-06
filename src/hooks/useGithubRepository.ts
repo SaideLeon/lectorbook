@@ -2,6 +2,9 @@ import { useState, useCallback, startTransition } from 'react';
 import { FileNode } from '@/types';
 import { githubApi } from '@/services/github.api';
 
+const TEACHING_DOC_REGEX = /\.(md|txt)$/i;
+const MAX_TEACHING_DOCS = 15;
+
 export function useGithubRepository() {
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<FileNode[]>([]);
@@ -9,6 +12,7 @@ export function useGithubRepository() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
+  const [teachingDocs, setTeachingDocs] = useState<{ path: string, content: string }[]>([]);
   
   // History
   const [fileHistory, setFileHistory] = useState<{ path: string, content: string }[]>([]);
@@ -18,27 +22,25 @@ export function useGithubRepository() {
     setIsLoading(true);
     setError(null);
     setRepoUrl(url);
+    setTeachingDocs([]);
     
     try {
-      const cleanUrl = url.replace(/\.git\/?$/, "").replace(/\/$/, "");
+      const cleanUrl = url.replace(/\.git\/?$/, '').replace(/\/$/, '');
       const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
-      if (!match) throw new Error("URL do GitHub inválida. Use o formato: https://github.com/usuario/repo");
+      if (!match) throw new Error('URL do GitHub inválida. Use o formato: https://github.com/usuario/repo');
       const [, owner, repo] = match;
 
       const treeData = await githubApi.getTree(owner, repo);
-      // We keep all nodes (trees and blobs) for the file explorer
       const allNodes = treeData.tree;
       
-      // Use startTransition for potentially expensive UI updates
       startTransition(() => {
-          setFiles(allNodes);
+        setFiles(allNodes);
       });
 
       const currentBranch = treeData.branch || 'main';
       setBranch(currentBranch);
       
-      // Fetch key files for initial analysis
-      // Filter for blobs only
+      // Inicial: mantém análise rápida com arquivos prioritários de código/configuração
       const priorityFiles = allNodes.filter((f) => 
         f.type === 'blob' && f.path.match(/(README|package\.json|tsconfig\.json|src\/main|src\/App|server\.ts|\.py|\.js|\.tsx)$/i)
       ).slice(0, 5);
@@ -48,13 +50,31 @@ export function useGithubRepository() {
         return { path: f.path, content };
       }));
 
+      // Carrega automaticamente documentação .md/.txt para suporte ao chat docente
+      const docFiles = allNodes
+        .filter((f) => f.type === 'blob' && TEACHING_DOC_REGEX.test(f.path))
+        .slice(0, MAX_TEACHING_DOCS);
+
+      const docsLoaded = await Promise.allSettled(
+        docFiles.map(async (f) => ({
+          path: f.path,
+          content: await githubApi.getFileContent(owner, repo, f.path, currentBranch)
+        }))
+      );
+
+      const availableDocs = docsLoaded
+        .filter((r): r is PromiseFulfilledResult<{ path: string; content: string }> => r.status === 'fulfilled')
+        .map((r) => r.value)
+        .filter((d) => d.content.trim().length > 0);
+
+      setTeachingDocs(availableDocs);
+
       await performAnalysis(fileContents);
       
       return { owner, repo, allFiles: allNodes, branch: currentBranch };
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ocorreu um erro ao buscar o repositório.");
-      // throw err; // Don't throw, just set error state
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro ao buscar o repositório.');
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +86,7 @@ export function useGithubRepository() {
     if (selectedFile && selectedFile.path === path) return;
 
     try {
-      const cleanUrl = repoUrl.replace(/\.git\/?$/, "").replace(/\/$/, "");
+      const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
       const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
       if (!match) return;
       const [, owner, repo] = match;
@@ -84,7 +104,7 @@ export function useGithubRepository() {
       return newFile;
     } catch (err) {
       console.error(err);
-      setError("Falha ao carregar conteúdo do arquivo");
+      setError('Falha ao carregar conteúdo do arquivo');
     }
   }, [repoUrl, selectedFile, fileHistory, currentHistoryIndex, branch]);
 
@@ -108,6 +128,7 @@ export function useGithubRepository() {
     setRepoUrl(null);
     setFiles([]);
     setSelectedFile(null);
+    setTeachingDocs([]);
     setFileHistory([]);
     setCurrentHistoryIndex(-1);
     githubApi.clearCache();
@@ -119,6 +140,7 @@ export function useGithubRepository() {
     isLoading,
     error,
     selectedFile,
+    teachingDocs,
     fileHistory,
     currentHistoryIndex,
     analyzeRepository,
@@ -126,7 +148,7 @@ export function useGithubRepository() {
     navigateBack,
     navigateForward,
     clearRepository,
-    setSelectedFile, // Exposed for closing file viewer
+    setSelectedFile,
     setError
   };
 }

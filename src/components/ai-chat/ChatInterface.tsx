@@ -46,12 +46,14 @@ export const ChatInterface = ({
   messages, 
   onSendMessage, 
   isThinking,
+  processLogs = [],
   isMaximized,
   onToggleMaximize
 }: { 
   messages: AnalysisMessage[], 
   onSendMessage: (msg: string) => void,
   isThinking: boolean,
+  processLogs?: string[],
   isMaximized: boolean,
   onToggleMaximize: () => void
 }) => {
@@ -62,7 +64,7 @@ export const ChatInterface = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isThinking]);
+  }, [messages, isThinking, processLogs]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,8 +163,13 @@ export const ChatInterface = ({
              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
                <Code2 className="w-4 h-4" />
              </div>
-             <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-400 italic animate-pulse">
-               Analisando implicações... Buscando padrões relevantes...
+             <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full">
+               <div className="italic text-gray-400 animate-pulse mb-2">Processando solicitação do docente...</div>
+               <ul className="space-y-1 text-xs font-mono">
+                 {(processLogs.length > 0 ? processLogs : ['Aguardando logs de processamento...']).map((log, idx) => (
+                   <li key={idx} className="text-gray-400">• {log}</li>
+                 ))}
+               </ul>
              </div>
            </div>
         )}

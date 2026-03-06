@@ -6,8 +6,12 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { history, currentInput, context, apiKey } = await req.json();
+    const { history, currentInput, context, contextFiles = [], apiKey } = await req.json();
     const ai = getAIClient(apiKey);
+
+    const docsContext = (contextFiles || [])
+      .map((f: any) => `--- ${f.path} ---\n${f.content}\n`)
+      .join('\n');
 
     const systemInstruction = `
       Você é o Docente principal chamado "Lector".
@@ -25,7 +29,8 @@ export async function POST(req: NextRequest) {
     `;
 
     const contents = [
-      { role: 'user', parts: [{ text: `Context (Code Summary/Snippet): ${context}` }] },
+      { role: 'user', parts: [{ text: `Contexto geral: ${context}` }] },
+      { role: 'user', parts: [{ text: `Conteúdo automático dos arquivos .md/.txt do repositório:\n${docsContext || 'Nenhum arquivo .md/.txt disponível.'}` }] },
       ...(history || []).map((h: any) => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.content }] })),
       { role: 'user', parts: [{ text: currentInput }] },
     ];
