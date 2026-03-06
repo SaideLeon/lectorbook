@@ -81,7 +81,7 @@ export const ChatInterface = ({
         <div className="flex items-center gap-2">
           <h3 className="font-medium flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-indigo-400" />
-            Assistente de Raciocínio Profundo
+            Docente Lector
           </h3>
           {isThinking && (
             <span className="text-xs text-indigo-400 animate-pulse flex items-center gap-1">
