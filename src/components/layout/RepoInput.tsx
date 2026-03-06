@@ -100,7 +100,7 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
       >
         <div className="space-y-4">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
-            Analise Repositórios GitHub com Raciocínio Profundo
+            Lectorbook
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
             Cole um link do GitHub ou navegue pelos seus repositórios para obter uma revisão de código abrangente e insights inteligentes.
