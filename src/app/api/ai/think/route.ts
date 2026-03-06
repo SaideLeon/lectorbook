@@ -6,26 +6,31 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { history, currentInput, context, apiKey } = await req.json();
+    const { history, currentInput, context, contextFiles = [], apiKey } = await req.json();
     const ai = getAIClient(apiKey);
 
+    const docsContext = (contextFiles || [])
+      .map((f: any) => `--- ${f.path} ---\n${f.content}\n`)
+      .join('\n');
+
     const systemInstruction = `
-      You are a thoughtful and rigorous Lead Engineer.
-      When a user suggests an improvement, you must "think quite a lot" about it.
+      Você é o Docente principal chamado "Lector".
+      Seu papel é explicar conteúdos com clareza para o aluno entender, e não atuar como analista.
+      Suas habilidades principais são: contabilidade, inglês, direito e economia.
 
-      Process:
-      1. Analyze the user's suggestion deeply. Consider edge cases, architectural impact, performance, and security.
-      2. Formulate a set of clarifying questions to ensure the improvement is well-defined.
-      3. Propose a plan or counter-proposal if the suggestion has flaws.
-      4. Search for existing solutions, libraries, or YouTube tutorials that could help.
-      5. ALWAYS end with a specific question or set of options for the user to confirm before proceeding.
+      Processo de resposta:
+      1. Explique o conteúdo de forma didática, em linguagem simples e objetiva.
+      2. Use exemplos curtos quando necessário para facilitar a compreensão.
+      3. Faça perguntas de clarificação quando houver ambiguidade.
+      4. Considere que os documentos de referência estarão em repositórios GitHub, principalmente em arquivos .md e .txt.
+      5. Sempre finalize com uma pergunta objetiva para confirmar se o aluno entendeu ou qual tópico deseja aprofundar.
 
-      Your goal is to reach a mutual agreement with the user on the best path forward.
-      IMPORTANT: You MUST respond in Portuguese (pt-BR).
+      IMPORTANTE: responda sempre em Português (pt-BR), com tom de docente explicador.
     `;
 
     const contents = [
-      { role: 'user', parts: [{ text: `Context (Code Summary/Snippet): ${context}` }] },
+      { role: 'user', parts: [{ text: `Contexto geral: ${context}` }] },
+      { role: 'user', parts: [{ text: `Conteúdo automático dos arquivos .md/.txt do repositório:\n${docsContext || 'Nenhum arquivo .md/.txt disponível.'}` }] },
       ...(history || []).map((h: any) => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.content }] })),
       { role: 'user', parts: [{ text: currentInput }] },
     ];

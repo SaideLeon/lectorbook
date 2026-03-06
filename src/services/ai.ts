@@ -31,6 +31,7 @@ export async function thinkAndSuggest(
   history: { role: string; content: string }[],
   currentInput: string,
   context: string,
+  contextFiles: { path: string; content: string }[] = [],
   apiKey?: string
 ) {
   const response = await fetch('/api/ai/think', {
@@ -40,6 +41,7 @@ export async function thinkAndSuggest(
       history,
       currentInput,
       context,
+      contextFiles,
       apiKey
     })
   });

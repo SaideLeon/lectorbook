@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import '@/index.css';
 
 export const metadata: Metadata = {
-  title: 'Brada Iota',
+  title: 'Lectorbook',
   description: 'Analisador de repositórios com IA',
 };
 
