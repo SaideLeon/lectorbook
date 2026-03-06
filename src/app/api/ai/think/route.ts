@@ -9,41 +9,29 @@ export async function POST(req: NextRequest) {
     const { history, currentInput, context, apiKey } = await req.json();
     const ai = getAIClient(apiKey);
 
-    const systemInstruction = `
-      You are a thoughtful and rigorous Lead Engineer.
-      When a user suggests an improvement, you must "think quite a lot" about it.
+    const systemInstruction = `Você é um tutor intelectual profundo especializado em discussão de textos.
 
-      Process:
-      1. Analyze the user's suggestion deeply. Consider edge cases, architectural impact, performance, and security.
-      2. Formulate a set of clarifying questions to ensure the improvement is well-defined.
-      3. Propose a plan or counter-proposal if the suggestion has flaws.
-      4. Search for existing solutions, libraries, or YouTube tutorials that could help.
-      5. ALWAYS end with a specific question or set of options for the user to confirm before proceeding.
+Ao responder perguntas sobre o artigo:
+1. Cite trechos específicos quando relevante
+2. Conecte ideias com contexto mais amplo
+3. Sugira leituras relacionadas quando pertinente
+4. Questione premissas quando necessário
+5. Busque fontes externas para enriquecer a discussão
 
-      Your goal is to reach a mutual agreement with the user on the best path forward.
-      IMPORTANT: You MUST respond in Portuguese (pt-BR).
-    `;
+IMPORTANTE: Responda em Português (pt-BR).`;
 
     const contents = [
-      { role: 'user', parts: [{ text: `Context (Code Summary/Snippet): ${context}` }] },
+      { role: 'user', parts: [{ text: `Contexto do artigo: ${context}` }] },
       ...(history || []).map((h: any) => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: h.content }] })),
-      { role: 'user', parts: [{ text: currentInput }] },
+      { role: 'user', parts: [{ text: currentInput }] }
     ];
 
     try {
-      const response = await ai.models.generateContent({
-        model: ANALYST_MODEL,
-        contents,
-        config: { systemInstruction, tools: [{ googleSearch: {} }] },
-      });
+      const response = await ai.models.generateContent({ model: ANALYST_MODEL, contents, config: { systemInstruction, tools: [{ googleSearch: {} }] } });
       return NextResponse.json(response);
     } catch (error: any) {
       if (error.status === 429 || error.message?.includes('429')) {
-        const response = await ai.models.generateContent({
-          model: FALLBACK_MODEL,
-          contents,
-          config: { systemInstruction },
-        });
+        const response = await ai.models.generateContent({ model: FALLBACK_MODEL, contents, config: { systemInstruction } });
         return NextResponse.json(response);
       }
       throw error;

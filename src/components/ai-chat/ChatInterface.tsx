@@ -81,7 +81,7 @@ export const ChatInterface = ({
         <div className="flex items-center gap-2">
           <h3 className="font-medium flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-indigo-400" />
-            Assistente de Raciocínio Profundo
+            Assistente de Leitura Profunda
           </h3>
           {isThinking && (
             <span className="text-xs text-indigo-400 animate-pulse flex items-center gap-1">
@@ -162,7 +162,7 @@ export const ChatInterface = ({
                <Code2 className="w-4 h-4" />
              </div>
              <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-400 italic animate-pulse">
-               Analisando implicações... Buscando padrões relevantes...
+               Analisando o conteúdo... Buscando referências...
              </div>
            </div>
         )}
@@ -174,7 +174,7 @@ export const ChatInterface = ({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Sugira uma melhoria ou faça uma pergunta..."
+            placeholder="Faça uma pergunta sobre o artigo..."
             className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3 pr-12 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
             disabled={isThinking}
           />

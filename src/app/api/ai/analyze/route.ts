@@ -6,40 +6,32 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, contextFiles, apiKey } = await req.json();
+    const { content, metadata, apiKey } = await req.json();
     const ai = getAIClient(apiKey);
-    const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
 
-    const fullPrompt = `
-      You are an expert Senior Software Engineer and Code Analyst.
-      Here is the code from a GitHub repository:
-      ${fileContext}
-      ${prompt ? `User Request: ${prompt}` : 'Please perform a comprehensive analysis of this codebase.'}
+    const fullPrompt = `Você é um especialista em análise de textos e artigos acadêmicos/jornalísticos.
 
-      Your task:
-      1. Summarize the purpose of the project.
-      2. Identify the tech stack.
-      3. List 3-5 major strengths.
-      4. List 3-5 areas for improvement (bugs, security risks, performance, code quality).
-      5. If the user asked a specific question, answer it in detail.
+Analise o seguinte artigo:
+${content}
 
-      IMPORTANT: You MUST respond in Portuguese (pt-BR).
-      Format your response in Markdown.
-    `;
+Metadados: ${JSON.stringify(metadata || {})}
+
+Sua análise deve incluir:
+1. Resumo executivo (3-5 parágrafos)
+2. Tese central e argumentos principais
+3. Evidências e fontes citadas
+4. Pontos fortes e limitações do texto
+5. Contexto e relevância do tema
+6. Vocabulário-chave e conceitos importantes
+
+IMPORTANTE: Responda em Português (pt-BR). Use Markdown.`;
 
     try {
-      const response = await ai.models.generateContent({
-        model: ANALYST_MODEL,
-        contents: fullPrompt,
-        config: { tools: [{ googleSearch: {} }] },
-      });
+      const response = await ai.models.generateContent({ model: ANALYST_MODEL, contents: fullPrompt, config: { tools: [{ googleSearch: {} }] } });
       return NextResponse.json(response);
     } catch (error: any) {
       if (error.status === 429 || error.message?.includes('429')) {
-        const response = await ai.models.generateContent({
-          model: FALLBACK_MODEL,
-          contents: fullPrompt,
-        });
+        const response = await ai.models.generateContent({ model: FALLBACK_MODEL, contents: fullPrompt });
         return NextResponse.json(response);
       }
       throw error;

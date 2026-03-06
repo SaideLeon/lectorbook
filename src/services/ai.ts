@@ -1,29 +1,19 @@
-export async function analyzeCode(
-  files: { path: string; content: string }[],
-  userQuery?: string,
+export async function analyzeArticle(
+  content: string,
+  metadata?: Record<string, unknown>,
   apiKey?: string
 ) {
   const response = await fetch('/api/ai/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contextFiles: files,
-      prompt: userQuery,
-      apiKey
-    })
+    body: JSON.stringify({ content, metadata, apiKey })
   });
-  
+
   if (!response.ok) {
-    let errorMessage = response.statusText;
-    try {
-        const errorBody = await response.json();
-        if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-    } catch (e) {
-        // Ignore JSON parse error
-    }
-    throw new Error(`AI Analysis failed: ${errorMessage}`);
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `AI Analysis failed: ${response.statusText}`);
   }
-  
+
   return response.json();
 }
 
@@ -36,52 +26,31 @@ export async function thinkAndSuggest(
   const response = await fetch('/api/ai/think', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      history,
-      currentInput,
-      context,
-      apiKey
-    })
+    body: JSON.stringify({ history, currentInput, context, apiKey })
   });
 
   if (!response.ok) {
-    let errorMessage = response.statusText;
-    try {
-        const errorBody = await response.json();
-        if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-    } catch (e) {
-        // Ignore JSON parse error
-    }
-    throw new Error(`AI Thinking failed: ${errorMessage}`);
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `AI Thinking failed: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-export async function generateBlueprint(
-  files: { path: string; content: string }[],
-  context: string,
+export async function generateArticleReport(
+  article: { title?: string; content: string },
+  analysis: string,
   apiKey?: string
 ) {
-  const response = await fetch('/api/ai/blueprint', {
+  const response = await fetch('/api/ai/report', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contextFiles: files,
-      context,
-      apiKey
-    })
+    body: JSON.stringify({ article, analysis, apiKey })
   });
 
   if (!response.ok) {
-    let errorMessage = response.statusText;
-    try {
-        const errorBody = await response.json();
-        if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-    } catch (e) {
-        // Ignore JSON parse error
-    }
-    throw new Error(`Blueprint generation failed: ${errorMessage}`);
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Report generation failed: ${response.statusText}`);
   }
 
   return response.json();
