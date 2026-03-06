@@ -1,6 +1,7 @@
-import { RepoTreeResponse } from '@/types';
+import { RepoTreeResponse, SelectedFile } from '@/types';
 
-const fileCache = new Map<string, string>();
+const textFileCache = new Map<string, string>();
+const pdfFileCache = new Map<string, string>();
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('github_token');
@@ -57,23 +58,44 @@ export const githubApi = {
     return res.json();
   },
 
-  async getFileContent(owner: string, repo: string, path: string, branch: string): Promise<string> {
+  async getTextFile(owner: string, repo: string, path: string, branch: string): Promise<SelectedFile> {
     const cacheKey = `${owner}/${repo}/${branch}/${path}`;
-    if (fileCache.has(cacheKey)) {
-      return fileCache.get(cacheKey)!;
+    if (textFileCache.has(cacheKey)) {
+      return { path, type: 'text', content: textFileCache.get(cacheKey)! };
     }
 
     const res = await fetch(`/api/github/content?owner=${owner}&repo=${repo}&path=${path}&branch=${branch}`, {
       headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error("Falha ao buscar arquivo");
-    
+
     const text = await res.text();
-    fileCache.set(cacheKey, text);
-    return text;
+    textFileCache.set(cacheKey, text);
+    return { path, type: 'text', content: text };
+  },
+
+  async getPdfFile(owner: string, repo: string, path: string, branch: string): Promise<SelectedFile> {
+    const cacheKey = `${owner}/${repo}/${branch}/${path}`;
+    if (pdfFileCache.has(cacheKey)) {
+      return { path, type: 'pdf', pdfBlobUrl: pdfFileCache.get(cacheKey)! };
+    }
+
+    const res = await fetch(`/api/github/content?owner=${owner}&repo=${repo}&path=${path}&branch=${branch}&format=pdf`, {
+      headers: getAuthHeaders()
+    });
+
+    if (!res.ok) throw new Error("Falha ao buscar PDF");
+
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    pdfFileCache.set(cacheKey, blobUrl);
+
+    return { path, type: 'pdf', pdfBlobUrl: blobUrl };
   },
 
   clearCache() {
-    fileCache.clear();
+    textFileCache.clear();
+    pdfFileCache.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
+    pdfFileCache.clear();
   }
 };

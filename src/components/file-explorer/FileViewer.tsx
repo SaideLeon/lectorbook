@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { FileCode, Minimize2, Maximize2, X, ArrowLeft, ArrowRight, Copy, Check } from 'lucide-react';
+import { FileCode, Minimize2, Maximize2, X, ArrowLeft, ArrowRight, Copy, Check, FileText } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '@/lib/utils';
+import { SelectedFile } from '@/types';
 
 export const FileViewer = ({ 
   file, 
@@ -14,7 +15,7 @@ export const FileViewer = ({
   canGoBack,
   canGoForward
 }: { 
-  file: { path: string, content: string }, 
+  file: SelectedFile,
   onClose: () => void, 
   isMaximized: boolean, 
   onToggleMaximize: () => void,
@@ -27,10 +28,13 @@ export const FileViewer = ({
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async () => {
+    if (!file.content) return;
     await navigator.clipboard.writeText(file.content);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
+
+  const isPdf = file.type === 'pdf' && !!file.pdfBlobUrl;
 
   return (
     <div className={cn(
@@ -58,18 +62,20 @@ export const FileViewer = ({
             </button>
           </div>
           <h3 className="font-medium flex items-center gap-2 truncate text-sm">
-            <FileCode className="w-4 h-4 text-indigo-400 shrink-0" />
+            {isPdf ? <FileText className="w-4 h-4 text-red-400 shrink-0" /> : <FileCode className="w-4 h-4 text-indigo-400 shrink-0" />}
             <span className="truncate">{file.path}</span>
           </h3>
         </div>
         <div className="flex items-center justify-end gap-1">
-          <button
-            onClick={handleCopy}
-            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-            title="Copiar conteúdo"
-          >
-            {isCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-          </button>
+          {file.type === 'text' && (
+            <button
+              onClick={handleCopy}
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+              title="Copiar conteúdo"
+            >
+              {isCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          )}
           <button 
             onClick={onToggleMaximize} 
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white hidden md:block"
@@ -82,15 +88,23 @@ export const FileViewer = ({
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto text-sm">
-        <SyntaxHighlighter
-          language={extension}
-          style={atomDark}
-          showLineNumbers
-          customStyle={{ margin: 0, padding: '1.5rem', background: '#0d0d0d', minHeight: '100%' }}
-        >
-          {file.content}
-        </SyntaxHighlighter>
+      <div className="flex-1 overflow-auto text-sm bg-[#0d0d0d]">
+        {isPdf ? (
+          <iframe
+            src={file.pdfBlobUrl}
+            title={file.path}
+            className="w-full h-full min-h-[480px] border-0"
+          />
+        ) : (
+          <SyntaxHighlighter
+            language={extension}
+            style={atomDark}
+            showLineNumbers
+            customStyle={{ margin: 0, padding: '1.5rem', background: '#0d0d0d', minHeight: '100%' }}
+          >
+            {file.content || ''}
+          </SyntaxHighlighter>
+        )}
       </div>
     </div>
   );

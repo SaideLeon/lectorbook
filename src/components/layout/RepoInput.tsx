@@ -100,10 +100,10 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
       >
         <div className="space-y-4">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
-            Analise Repositórios GitHub com Raciocínio Profundo
+            Transforme um repositório GitHub na sua biblioteca de estudos
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-            Cole um link do GitHub ou navegue pelos seus repositórios para obter uma revisão de código abrangente e insights inteligentes.
+            Use um repositório com PDFs, arquivos .md e .txt para ler materiais, explorar conteúdos e conversar com o Lectorbook como um tutor.
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="Link do repositório..."
+                placeholder="Link do repositório com seus documentos..."
                 className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 px-2 md:px-4 py-2 text-sm md:text-base min-w-0"
                 disabled={isLoading}
               />

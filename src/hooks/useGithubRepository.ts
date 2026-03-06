@@ -1,5 +1,5 @@
 import { useState, useCallback, startTransition } from 'react';
-import { FileNode } from '@/types';
+import { FileNode, SelectedFile } from '@/types';
 import { githubApi } from '@/services/github.api';
 
 export function useGithubRepository() {
@@ -8,10 +8,10 @@ export function useGithubRepository() {
   const [branch, setBranch] = useState<string>('main');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   
   // History
-  const [fileHistory, setFileHistory] = useState<{ path: string, content: string }[]>([]);
+  const [fileHistory, setFileHistory] = useState<SelectedFile[]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
 
   const analyzeRepository = useCallback(async (url: string, performAnalysis: (files: { path: string, content: string }[]) => Promise<string>) => {
@@ -44,8 +44,8 @@ export function useGithubRepository() {
       ).slice(0, 5);
 
       const fileContents = await Promise.all(priorityFiles.map(async (f) => {
-        const content = await githubApi.getFileContent(owner, repo, f.path, currentBranch);
-        return { path: f.path, content };
+        const textFile = await githubApi.getTextFile(owner, repo, f.path, currentBranch);
+        return { path: f.path, content: textFile.content || '' };
       }));
 
       await performAnalysis(fileContents);
@@ -71,9 +71,13 @@ export function useGithubRepository() {
       if (!match) return;
       const [, owner, repo] = match;
 
-      const content = await githubApi.getFileContent(owner, repo, path, branch);
-      
-      const newFile = { path, content };
+      const extension = path.split('.').pop()?.toLowerCase() || '';
+      const isPdf = extension === 'pdf';
+
+      const newFile = isPdf
+        ? await githubApi.getPdfFile(owner, repo, path, branch)
+        : await githubApi.getTextFile(owner, repo, path, branch);
+
       setSelectedFile(newFile);
       
       const newHistory = fileHistory.slice(0, currentHistoryIndex + 1);

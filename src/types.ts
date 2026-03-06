@@ -22,3 +22,10 @@ export interface AnalysisMessage {
   isThinking?: boolean;
   relatedLinks?: { title: string; url: string }[];
 }
+
+export interface SelectedFile {
+  path: string;
+  type: 'text' | 'pdf';
+  content?: string;
+  pdfBlobUrl?: string;
+}
