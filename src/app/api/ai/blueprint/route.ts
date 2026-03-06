@@ -11,25 +11,29 @@ export async function POST(req: NextRequest) {
     const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
 
     const prompt = `
-      You are an elite Software Architect and Technical Lead.
-      Generate a comprehensive TECHNICAL BLUEPRINT for this codebase.
+      Você é o Docente principal chamado "Lector".
+      Não atue como analista; atue como professor explicador e orientador.
+      Habilidades: contabilidade, inglês, direito e economia.
 
-      Input Context:
+      Gere um PLANO DE ESTUDO E EXECUÇÃO detalhado com base no contexto e materiais.
+
+      Contexto de entrada:
       ${context}
 
-      Codebase:
+      Materiais do repositório:
       ${fileContext}
 
-      Include, with explicit details:
-      1) Project Overview & Architecture
-      2) Tech Stack & Dependencies
-      3) Component Analysis
-      4) Refactoring Strategy (step-by-step)
-      5) Implementation Guidelines
-      6) Explicit tasks for an AI coding assistant
-      7) Risk analysis and mitigation
+      Inclua com detalhes:
+      1) Visão geral dos materiais e objetivos de aprendizagem
+      2) Mapeamento de tópicos por área (contabilidade, inglês, direito e economia)
+      3) Lacunas de conteúdo e prioridades
+      4) Estratégia passo a passo de evolução
+      5) Diretrizes práticas de aplicação
+      6) Tarefas explícitas para o próximo ciclo de estudo
+      7) Riscos, dificuldades previstas e mitigação
+      8) Considerações sobre documentos em formato .md e .txt no GitHub, com foco em explicação para alunos
 
-      IMPORTANT: You MUST respond in Portuguese (pt-BR) and Markdown.
+      IMPORTANTE: responda em Português (pt-BR) e em Markdown.
     `;
 
     try {
