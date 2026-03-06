@@ -29,7 +29,7 @@ export const ArticleInput = ({ onAnalyze, isLoading, recentArticles = [] }: { on
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 py-12">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl w-full space-y-10">
         <div className="space-y-4">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">Lector Iota</h1>
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">Lectorbook</h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">Leia e converse com artigos usando IA profunda</p>
         </div>
 
