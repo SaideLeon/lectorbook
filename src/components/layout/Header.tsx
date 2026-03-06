@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { BookOpen, Settings, Upload, Maximize, Minimize } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { PersonalRepoConfig } from '@/types';
+import { PersonalLibrarySettings } from '@/components/personal-library/PersonalLibrarySettings';
 
 interface HeaderProps {
   apiKeys: string[];
@@ -9,9 +11,13 @@ interface HeaderProps {
   onLogoClick?: () => void;
   language: 'pt-BR' | 'EN' | 'ES';
   onLanguageChange: (language: 'pt-BR' | 'EN' | 'ES') => void;
+  isPersonalLibraryConnected: boolean;
+  personalRepoConfig: PersonalRepoConfig | null;
+  onConnectPersonalLibrary: (pat: string, owner: string, repo: string, branch?: string) => Promise<void>;
+  onDisconnectPersonalLibrary: () => void;
 }
 
-export const Header = ({ apiKeys = [], onUploadKeys, onLogoClick, language, onLanguageChange }: HeaderProps) => {
+export const Header = ({ apiKeys = [], onUploadKeys, onLogoClick, language, onLanguageChange, isPersonalLibraryConnected, personalRepoConfig, onConnectPersonalLibrary, onDisconnectPersonalLibrary }: HeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +59,7 @@ export const Header = ({ apiKeys = [], onUploadKeys, onLogoClick, language, onLa
             <option value="pt-BR">PT-BR</option><option value="EN">EN</option><option value="ES">ES</option>
           </select>
           <button onClick={toggleFullscreen} className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/5">{isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}</button>
-          <button onClick={() => setIsSettingsOpen(true)} className="relative p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/5"><Settings className="w-5 h-5" />{apiKeys.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-[#0a0a0a]" />}</button>
+          <button onClick={() => setIsSettingsOpen(true)} className="relative p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/5"><Settings className="w-5 h-5" />{(apiKeys.length > 0 || isPersonalLibraryConnected) && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-[#0a0a0a]" />}</button>
         </div>
       </div>
       <Modal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} title="Gerenciar Chaves API">
@@ -66,6 +72,12 @@ export const Header = ({ apiKeys = [], onUploadKeys, onLogoClick, language, onLa
           <input type="file" accept=".txt" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
           {uploadStatus && <p className={`text-xs ${uploadStatus.includes('Erro') ? 'text-red-400' : 'text-emerald-400'}`}>{uploadStatus}</p>}
         </div>
+        <PersonalLibrarySettings
+          isConnected={isPersonalLibraryConnected}
+          repoConfig={personalRepoConfig}
+          onConnect={onConnectPersonalLibrary}
+          onDisconnect={onDisconnectPersonalLibrary}
+        />
       </Modal>
     </header>
   );

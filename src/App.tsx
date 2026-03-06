@@ -7,9 +7,12 @@ import { ArticleInput } from '@/components/layout/ArticleInput';
 import { ArticleList } from '@/components/article-explorer/ArticleList';
 import { ArticleViewer } from '@/components/article-explorer/ArticleViewer';
 import { ChatInterface } from '@/components/ai-chat/ChatInterface';
+import { PersonalLibraryPanel } from '@/components/personal-library/PersonalLibraryPanel';
 import { useArticleLibrary } from '@/hooks/useArticleLibrary';
 import { useAIChat } from '@/hooks/useAIChat';
+import { usePersonalLibrary } from '@/hooks/usePersonalLibrary';
 import { useToast } from '@/components/ui/Toast';
+import { Article } from '@/types';
 
 type MobileTab = 'library' | 'chat' | 'preview';
 
@@ -19,9 +22,11 @@ export default function App() {
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [language, setLanguage] = useState<'pt-BR' | 'EN' | 'ES'>('pt-BR');
+  const [libraryTab, setLibraryTab] = useState<'local' | 'repo'>('local');
 
-  const { currentUrl, articles, isLoading, error, selectedArticle, addArticle, selectArticle, navigateBack, navigateForward, fileHistory, currentHistoryIndex, clearLibrary, setSelectedArticle, setError } = useArticleLibrary();
+  const { currentUrl, articles, isLoading, error, selectedArticle, addArticle, addExtractedArticle, selectArticle, navigateBack, navigateForward, fileHistory, currentHistoryIndex, clearLibrary, setSelectedArticle, setError } = useArticleLibrary();
   const { chatHistory, isThinking, analysis, isGeneratingReport, performInitialAnalysis, sendMessage, generateArticleReport, apiKeys, keyIndex, handleKeyFileUpload } = useAIChat();
+  const { files: personalFiles, isConnected: isPersonalLibraryConnected, isLoadingFiles, error: personalLibraryError, repoConfig: personalRepoConfig, connect: connectPersonalLibrary, disconnect: disconnectPersonalLibrary, loadFiles: loadPersonalFiles, openFile: openPersonalFile } = usePersonalLibrary();
 
   useEffect(() => {
     if (!selectedArticle && maximizedPanel === 'article') setMaximizedPanel(null);
@@ -29,6 +34,11 @@ export default function App() {
 
   const handleAnalyze = async (input: string | File) => {
     await addArticle(input, performInitialAnalysis);
+    setActiveMobileTab('chat');
+  };
+
+  const handlePersonalFileSelect = async (article: Article) => {
+    await addExtractedArticle(article, performInitialAnalysis);
     setActiveMobileTab('chat');
   };
 
@@ -49,7 +59,18 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#0a0a0a] text-gray-100 font-sans selection:bg-indigo-500/30">
-      <Header apiKeys={apiKeys} keyIndex={keyIndex} onUploadKeys={handleKeyFileUpload} onLogoClick={clearLibrary} language={language} onLanguageChange={setLanguage} />
+      <Header
+        apiKeys={apiKeys}
+        keyIndex={keyIndex}
+        onUploadKeys={handleKeyFileUpload}
+        onLogoClick={clearLibrary}
+        language={language}
+        onLanguageChange={setLanguage}
+        isPersonalLibraryConnected={isPersonalLibraryConnected}
+        personalRepoConfig={personalRepoConfig}
+        onConnectPersonalLibrary={connectPersonalLibrary}
+        onDisconnectPersonalLibrary={disconnectPersonalLibrary}
+      />
       <main className="flex-1 w-full p-0 md:p-6 overflow-hidden relative">
         <AnimatePresence mode="wait">
           {!currentUrl && articles.length === 0 ? (
@@ -59,12 +80,28 @@ export default function App() {
               <div className={cn('hidden lg:flex bg-[#111] rounded-xl border border-white/10 p-4 h-full overflow-hidden flex-col transition-all duration-300', maximizedPanel ? 'hidden' : (selectedArticle ? 'lg:col-span-2' : 'lg:col-span-3'))}>
                 <div className="mb-4 pb-4 border-b border-white/10">
                   <h2 className="font-semibold truncate text-sm">Biblioteca</h2>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button onClick={() => setLibraryTab('local')} className={cn('text-[10px] px-2 py-1 rounded border', libraryTab === 'local' ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200' : 'border-white/10 text-gray-400 hover:text-gray-200')}>Local</button>
+                    <button onClick={() => setLibraryTab('repo')} className={cn('text-[10px] px-2 py-1 rounded border', libraryTab === 'repo' ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200' : 'border-white/10 text-gray-400 hover:text-gray-200')}>Repositório</button>
+                  </div>
                   <div className="flex flex-col gap-2 mt-2">
                     <button onClick={clearLibrary} className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1">← Carregar outro artigo</button>
                     <button onClick={handleGenerateReport} disabled={isGeneratingReport || !selectedArticle} className="text-[10px] bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded px-2 py-1 flex items-center justify-center gap-2 transition-colors disabled:opacity-50">{isGeneratingReport ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}Relatório</button>
                   </div>
                 </div>
-                <ArticleList articles={articles} selectedId={selectedArticle?.id} onSelect={selectArticle} />
+                {libraryTab === 'local' ? (
+                  <ArticleList articles={articles} selectedId={selectedArticle?.id} onSelect={selectArticle} />
+                ) : (
+                  <PersonalLibraryPanel
+                    files={personalFiles}
+                    isConnected={isPersonalLibraryConnected}
+                    isLoadingFiles={isLoadingFiles}
+                    error={personalLibraryError}
+                    onRefresh={loadPersonalFiles}
+                    onOpenFile={openPersonalFile}
+                    onFileSelect={handlePersonalFileSelect}
+                  />
+                )}
               </div>
 
               <AnimatePresence>
@@ -72,8 +109,28 @@ export default function App() {
                   <>
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden" />
                     <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed left-0 top-0 bottom-0 w-[80%] max-w-xs bg-[#111] z-[61] p-4 border-r border-white/10 flex flex-col lg:hidden">
-                      <div className="flex items-center justify-between mb-6"><span className="font-bold text-indigo-400">Artigos</span><button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-white/5 rounded"><CloseIcon className="w-5 h-5" /></button></div>
-                      <ArticleList articles={articles} selectedId={selectedArticle?.id} onSelect={(id) => { selectArticle(id); setIsSidebarOpen(false); setActiveMobileTab('preview'); }} />
+                      <div className="flex items-center justify-between mb-4"><span className="font-bold text-indigo-400">Artigos</span><button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-white/5 rounded"><CloseIcon className="w-5 h-5" /></button></div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <button onClick={() => setLibraryTab('local')} className={cn('text-[10px] px-2 py-1 rounded border', libraryTab === 'local' ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200' : 'border-white/10 text-gray-400 hover:text-gray-200')}>Local</button>
+                        <button onClick={() => setLibraryTab('repo')} className={cn('text-[10px] px-2 py-1 rounded border', libraryTab === 'repo' ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200' : 'border-white/10 text-gray-400 hover:text-gray-200')}>Repositório</button>
+                      </div>
+                      {libraryTab === 'local' ? (
+                        <ArticleList articles={articles} selectedId={selectedArticle?.id} onSelect={(id) => { selectArticle(id); setIsSidebarOpen(false); setActiveMobileTab('preview'); }} />
+                      ) : (
+                        <PersonalLibraryPanel
+                          files={personalFiles}
+                          isConnected={isPersonalLibraryConnected}
+                          isLoadingFiles={isLoadingFiles}
+                          error={personalLibraryError}
+                          onRefresh={loadPersonalFiles}
+                          onOpenFile={openPersonalFile}
+                          onFileSelect={async (article) => {
+                            await handlePersonalFileSelect(article);
+                            setIsSidebarOpen(false);
+                            setActiveMobileTab('preview');
+                          }}
+                        />
+                      )}
                     </motion.div>
                   </>
                 )}

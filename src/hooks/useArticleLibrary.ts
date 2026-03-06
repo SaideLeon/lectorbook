@@ -28,23 +28,13 @@ export function useArticleLibrary() {
     }
   }, [articles]);
 
-  const addArticle = useCallback(async (
-    input: string | File,
+  const addExtractedArticle = useCallback(async (
+    article: Article,
     performAnalysis: (content: string, metadata: Partial<Article>) => Promise<string>
   ) => {
     setIsLoading(true);
     setError(null);
     try {
-      let article: Article;
-      if (typeof input === 'string' && input.startsWith('http')) {
-        setCurrentUrl(input);
-        article = await articleApi.extractFromUrl(input);
-      } else if (typeof input === 'string') {
-        article = await articleApi.extractFromText(input);
-      } else {
-        article = await articleApi.extractFromPdf(input);
-      }
-
       await performAnalysis(article.content, { title: article.title, source: article.source, url: article.url });
       setArticles(prev => {
         const without = prev.filter(a => a.id !== article.id);
@@ -60,6 +50,24 @@ export function useArticleLibrary() {
       setIsLoading(false);
     }
   }, [fileHistory.length]);
+
+  const addArticle = useCallback(async (
+    input: string | File,
+    performAnalysis: (content: string, metadata: Partial<Article>) => Promise<string>
+  ) => {
+    let article: Article;
+
+    if (typeof input === 'string' && input.startsWith('http')) {
+      setCurrentUrl(input);
+      article = await articleApi.extractFromUrl(input);
+    } else if (typeof input === 'string') {
+      article = await articleApi.extractFromText(input);
+    } else {
+      article = await articleApi.extractFromPdf(input);
+    }
+
+    await addExtractedArticle(article, performAnalysis);
+  }, [addExtractedArticle]);
 
   const selectArticle = useCallback(async (id: string) => {
     const found = articles.find(a => a.id === id);
@@ -107,6 +115,7 @@ export function useArticleLibrary() {
     fileHistory,
     currentHistoryIndex,
     addArticle,
+    addExtractedArticle,
     selectArticle,
     navigateBack,
     navigateForward,

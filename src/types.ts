@@ -42,3 +42,18 @@ export interface AnalysisMessage {
   isThinking?: boolean;
   relatedLinks?: { title: string; url: string }[];
 }
+
+
+export interface PersonalFile {
+  path: string;
+  name: string;
+  type: 'pdf' | 'md' | 'txt';
+  size?: number;
+  sha: string;
+}
+
+export interface PersonalRepoConfig {
+  owner: string;
+  repo: string;
+  branch: string;
+}
