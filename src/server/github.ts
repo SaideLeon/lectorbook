@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 
 export function getGithubHeaders(req: NextRequest) {
   const headers: Record<string, string> = {
-    'User-Agent': 'Brada-Iota',
+    'User-Agent': 'Lectorbook',
     Accept: 'application/vnd.github.v3+json',
   };
 

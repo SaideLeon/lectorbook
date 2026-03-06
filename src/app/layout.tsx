@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import '@/index.css';
 
 export const metadata: Metadata = {
-  title: 'Lector Iota',
+  title: 'Lectorbook',
   description: 'Leitor inteligente de artigos com conversação por IA',
 };
 
