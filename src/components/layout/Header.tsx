@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Code2, Settings, Upload, Key, Maximize, Minimize, Github } from 'lucide-react';
+import { BookOpen, Settings, Upload, Key, Maximize, Minimize, Github, ChevronDown } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 
 interface HeaderProps {
@@ -146,18 +146,23 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
 
   return (
     <header className="border-b border-white/10 bg-[#0a0a0a]/50 backdrop-blur-md sticky top-0 z-50">
-      <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
+      <div className="w-full px-4 md:px-6 h-20 md:h-24 flex items-center justify-between">
         <button 
           onClick={onLogoClick}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
-            <Code2 className="text-white w-5 h-5" />
+          <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center shrink-0">
+            <BookOpen className="text-white w-7 h-7" />
           </div>
-          <span className="font-semibold text-base md:text-lg tracking-tight text-white truncate max-w-[120px] md:max-w-none">Brada Iota</span>
+          <span className="font-semibold text-2xl tracking-tight text-white truncate max-w-[120px] md:max-w-none">Lectorbook</span>
         </button>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          <button className="h-12 px-4 md:px-5 rounded-2xl border border-white/10 bg-[#0f1116] text-gray-200 text-sm md:text-base flex items-center gap-2 md:gap-3 hover:border-indigo-500/40 transition-colors">
+            PT-BR
+            <ChevronDown className="w-4 h-4" />
+          </button>
+
           <button 
             onClick={toggleFullscreen}
             className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
@@ -176,7 +181,6 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-[#0a0a0a]" />
             )}
           </button>
-          <span className="text-sm text-gray-500">v1.0.0</span>
         </div>
       </div>
 
