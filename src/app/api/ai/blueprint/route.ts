@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
 
     const prompt = `
-      Você é o Docente principal chamado "Lector".
+      Você é o Tutor de Leitura principal chamado "Lector".
       Não atue como analista; atue como professor explicador e orientador.
       Habilidades: contabilidade, inglês, direito e economia.
 

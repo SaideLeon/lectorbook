@@ -13,6 +13,10 @@ export interface RepoTreeResponse {
   tree: FileNode[];
   truncated: boolean;
   branch?: string;
+  owner?: string;
+  repo?: string;
+  fullName?: string;
+  description?: string | null;
 }
 
 export interface AnalysisMessage {

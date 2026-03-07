@@ -9,6 +9,7 @@ export function useGithubRepository() {
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<FileNode[]>([]);
   const [branch, setBranch] = useState<string>('main');
+  const [repoDescription, setRepoDescription] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
@@ -23,6 +24,7 @@ export function useGithubRepository() {
     setError(null);
     setRepoUrl(url);
     setTeachingDocs([]);
+    setRepoDescription(null);
     
     try {
       const cleanUrl = url.replace(/\.git\/?$/, '').replace(/\/$/, '');
@@ -39,6 +41,7 @@ export function useGithubRepository() {
 
       const currentBranch = treeData.branch || 'main';
       setBranch(currentBranch);
+      setRepoDescription(treeData.description || null);
       
       // Inicial: mantém análise rápida com arquivos prioritários de código/configuração
       const priorityFiles = allNodes.filter((f) => 
@@ -129,6 +132,7 @@ export function useGithubRepository() {
     setFiles([]);
     setSelectedFile(null);
     setTeachingDocs([]);
+    setRepoDescription(null);
     setFileHistory([]);
     setCurrentHistoryIndex(-1);
     githubApi.clearCache();
@@ -137,6 +141,7 @@ export function useGithubRepository() {
   return {
     repoUrl,
     files,
+    repoDescription,
     isLoading,
     error,
     selectedFile,

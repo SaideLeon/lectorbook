@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { AnalysisMessage } from '@/types';
-import { analyzeCode, thinkAndSuggest, generateBlueprint as generateBlueprintService } from '@/services/ai';
+import { analyzeCode, thinkAndSuggest, generateReadingSheet as generateReadingSheetService } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
 
@@ -8,7 +8,7 @@ export function useAIChat() {
   const [chatHistory, setChatHistory] = useState<AnalysisMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
-  const [isGeneratingBlueprint, setIsGeneratingBlueprint] = useState(false);
+  const [isGeneratingReadingSheet, setIsGeneratingReadingSheet] = useState(false);
   const [processLogs, setProcessLogs] = useState<string[]>([]);
   
   const [apiKeys, setApiKeys] = useState<string[]>([]);
@@ -86,7 +86,7 @@ export function useAIChat() {
     setProcessLogs([]);
 
     try {
-      appendLog('Iniciando solicitação ao Docente Lector...');
+      appendLog('Iniciando solicitação ao Tutor de Leitura Lector...');
       const activeKey = getNextKey();
 
       const limitedContextFiles = contextFiles.map((f) => ({
@@ -142,9 +142,9 @@ export function useAIChat() {
     }
   }, [chatHistory, analysis, getNextKey, appendLog]);
 
-  const generateProjectBlueprint = useCallback(async (repoName: string, contextFiles: { path: string, content: string }[]) => {
+  const generateReadingSheet = useCallback(async (repoName: string, contextFiles: { path: string, content: string }[]) => {
     if (!analysis) return;
-    setIsGeneratingBlueprint(true);
+    setIsGeneratingReadingSheet(true);
     
     try {
       const activeKey = getNextKey();
@@ -153,27 +153,27 @@ export function useAIChat() {
         content: limitTextContext(f.content)
       }));
 
-      const response = await generateBlueprintService(limitedFiles, analysis, activeKey);
-      const blueprintText = getResponseText(response);
+      const response = await generateReadingSheetService(limitedFiles, analysis, activeKey);
+      const readingSheetText = getResponseText(response);
       
-      if (!blueprintText) {
+      if (!readingSheetText) {
         throw new Error('A resposta da IA veio vazia.');
       }
       
-      const blob = new Blob([blueprintText], { type: 'text/markdown' });
+      const blob = new Blob([readingSheetText], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `blueprint-${repoName}.md`;
+      a.download = `ficha-de-leitura-${repoName}.md`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Blueprint generation failed:', err);
+      console.error('Reading sheet generation failed:', err);
       throw err;
     } finally {
-      setIsGeneratingBlueprint(false);
+      setIsGeneratingReadingSheet(false);
     }
   }, [analysis, getNextKey]);
 
@@ -181,11 +181,11 @@ export function useAIChat() {
     chatHistory,
     isThinking,
     analysis,
-    isGeneratingBlueprint,
+    isGeneratingReadingSheet,
     processLogs,
     performInitialAnalysis,
     sendMessage,
-    generateProjectBlueprint,
+    generateReadingSheet,
     setChatHistory,
     apiKeys,
     keyIndex,
