@@ -1,18 +1,84 @@
-# Lectorbook (Next.js)
+# Lectorbook
 
-Aplicação migrada para **Next.js (App Router)**, mantendo o mesmo design da interface.
+Lectorbook é uma aplicação web para **analisar repositórios GitHub com apoio de IA**.
+A interface permite carregar a árvore de arquivos de um repositório, visualizar conteúdos de arquivos, conversar com um assistente sobre o código e gerar uma ficha de leitura do conteúdo.
 
-## Rodar localmente
+> Stack principal: **Next.js (App Router)** + **React 19** + rotas API no servidor.
+
+## O que o projeto faz
+
+- Analisa repositórios GitHub a partir de URL.
+- Exibe árvore de arquivos e visualização de conteúdo.
+- Permite chat contextual sobre o repositório carregado.
+- Gera ficha de leitura com base na análise.
+- Suporta cache de dados de GitHub no backend para reduzir chamadas repetidas.
+
+## Arquitetura (visão rápida)
+
+- **Frontend**: componentes React em `src/components/**` e composição principal em `src/App.tsx`.
+- **Entrada da aplicação**: `src/app/page.tsx`.
+- **Backend (Next API Routes)**: `src/app/api/**`.
+- **Serviços de servidor**: `src/server/**` (integração GitHub, Gemini, cache e utilidades).
+- **Hooks de domínio**: `src/hooks/**` (carregamento de repositório e chat/IA).
+
+## Requisitos
+
+- Node.js 18+
+- npm
+
+## Configuração de ambiente
+
+Crie o arquivo `.env` com base no `.env.example`.
+
+Variáveis mais importantes:
+
+- `GEMINI_API_KEY`: chave para chamadas de IA.
+- `APP_URL`: URL base da aplicação (usada em callbacks e links internos).
+- `GITHUB_TOKEN`: token do GitHub usado **apenas no servidor** para chamadas à API do GitHub.
+
+### Importante sobre o token do GitHub
+
+O token do GitHub deve ser configurado **somente no `.env` do servidor**.
+O frontend não deve enviar token por `localStorage` ou cabeçalhos customizados.
+
+## Rodando localmente
 
 ```bash
 npm install
 npm run dev
 ```
 
-A aplicação ficará em `http://localhost:3000`.
+A aplicação ficará disponível em `http://localhost:3000`.
 
-## Estrutura
+## Scripts úteis
 
-- `src/app/page.tsx`: entrada do frontend.
-- `src/app/api/**`: backend via rotas do servidor Next.js.
-- `src/server/**`: serviços compartilhados do backend (GitHub, cache, Gemini).
+- `npm run dev` — inicia ambiente de desenvolvimento.
+- `npm run build` — gera build de produção.
+- `npm run start` — sobe a aplicação em modo produção.
+- `npm run lint` — valida tipos com TypeScript (`tsc --noEmit`).
+
+## Fluxo de uso
+
+1. Abra a aplicação.
+2. Informe a URL de um repositório GitHub.
+3. Aguarde a leitura da árvore de arquivos.
+4. Navegue pelos arquivos e faça perguntas no chat.
+5. Opcionalmente, gere uma ficha de leitura.
+
+## Estrutura de pastas (resumida)
+
+```text
+src/
+  app/
+    api/                 # Rotas backend (Next.js)
+    page.tsx             # Página principal
+  components/            # UI (layout, chat, file explorer, etc.)
+  hooks/                 # Lógica de estado/integrações no cliente
+  server/                # Serviços de backend (GitHub, cache, IA)
+  utils/                 # Helpers utilitários
+```
+
+## Observações
+
+- A listagem de repositórios do usuário depende de `GITHUB_TOKEN` configurado no servidor.
+- Se houver erro de autenticação GitHub, verifique primeiro o `.env` e permissões do token.

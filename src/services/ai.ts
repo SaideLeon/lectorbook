@@ -60,7 +60,7 @@ export async function thinkAndSuggest(
   return response.json();
 }
 
-export async function generateBlueprint(
+export async function generateReadingSheet(
   files: { path: string; content: string }[],
   context: string,
   apiKey?: string
@@ -83,7 +83,7 @@ export async function generateBlueprint(
     } catch (e) {
         // Ignore JSON parse error
     }
-    throw new Error(`Blueprint generation failed: ${errorMessage}`);
+    throw new Error(`Reading sheet generation failed: ${errorMessage}`);
   }
 
   return response.json();

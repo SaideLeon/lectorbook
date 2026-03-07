@@ -28,6 +28,7 @@ export default function App() {
   const {
     repoUrl,
     files,
+    repoDescription,
     isLoading: isRepoLoading,
     error: repoError,
     selectedFile,
@@ -47,11 +48,11 @@ export default function App() {
     chatHistory,
     isThinking,
     analysis,
-    isGeneratingBlueprint,
+    isGeneratingReadingSheet,
     processLogs,
     performInitialAnalysis,
     sendMessage,
-    generateProjectBlueprint,
+    generateReadingSheet,
     apiKeys,
     keyIndex,
     handleKeyFileUpload
@@ -73,7 +74,7 @@ export default function App() {
     setActiveMobileTab('chat');
   };
 
-  const handleGenerateBlueprint = async () => {
+  const handleGenerateReadingSheet = async () => {
     if (!repoUrl || !analysis) return;
     const contextFiles =
       teachingDocs.length > 0
@@ -81,20 +82,27 @@ export default function App() {
         : selectedFile
         ? [selectedFile]
         : [];
-    const loadingToastId = showToast("Gerando blueprint do projeto...", "loading", 0);
+    const loadingToastId = showToast("Gerando ficha de leitura...", "loading", 0);
     
     try {
-      await generateProjectBlueprint(repoUrl.split('github.com/')[1], contextFiles);
+      await generateReadingSheet(repoUrl.split('github.com/')[1], contextFiles);
       hideToast(loadingToastId);
-      showToast("Blueprint gerado com sucesso!", "success");
+      showToast("Ficha de leitura gerada com sucesso!", "success");
       setActiveMobileTab('chat');
     } catch (err: any) {
       hideToast(loadingToastId);
-      const msg = err.message || "Falha ao gerar blueprint.";
+      const msg = err.message || "Falha ao gerar ficha de leitura.";
       setRepoError(msg);
       showToast(msg, "error");
     }
   };
+
+  const repositoryName = (() => {
+    if (!repoUrl) return undefined;
+    const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
+    const match = cleanUrl.match(/github\.com\/[^/]+\/([^/]+)/);
+    return match?.[1] || cleanUrl.split('/').pop();
+  })();
 
   const handleFileSelect = async (path: string) => {
     await selectFile(path);
@@ -140,12 +148,12 @@ export default function App() {
                       ← Analisar outro
                     </button>
                     <button
-                      onClick={handleGenerateBlueprint}
-                      disabled={isGeneratingBlueprint}
+                      onClick={handleGenerateReadingSheet}
+                      disabled={isGeneratingReadingSheet}
                       className="text-[10px] bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded px-2 py-1 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                     >
-                      {isGeneratingBlueprint ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
-                      Blueprint
+                      {isGeneratingReadingSheet ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+                      Ficha de Leitura
                     </button>
                   </div>
                 </div>
@@ -190,12 +198,12 @@ export default function App() {
                               ← Analisar outro
                             </button>
                             <button
-                              onClick={handleGenerateBlueprint}
-                              disabled={isGeneratingBlueprint}
+                              onClick={handleGenerateReadingSheet}
+                              disabled={isGeneratingReadingSheet}
                               className="w-full text-[10px] bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded px-2 py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                             >
-                              {isGeneratingBlueprint ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
-                              Gerar Blueprint do Projeto
+                              {isGeneratingReadingSheet ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+                              Gerar Ficha de Leitura
                             </button>
                           </div>
                         </div>
@@ -228,6 +236,8 @@ export default function App() {
                   processLogs={processLogs}
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
+                  repositoryName={repositoryName}
+                  repositoryDescription={repoDescription}
                 />
               </div>
 

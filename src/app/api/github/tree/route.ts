@@ -16,13 +16,16 @@ export async function GET(req: NextRequest) {
 
     const headers = getGithubHeaders(req);
     let targetBranch = branch || '';
+    let repoDescription: string | null = null;
+
+    const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+    if (!repoInfoRes.ok) throw new AppError('Repository not found', 404);
+    const repoInfo = (await repoInfoRes.json()) as GithubRepoInfo;
 
     if (!targetBranch) {
-      const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-      if (!repoInfoRes.ok) throw new AppError('Repository not found', 404);
-      const repoInfo = (await repoInfoRes.json()) as GithubRepoInfo;
       targetBranch = repoInfo.default_branch;
     }
+    repoDescription = repoInfo.description;
 
     const cachedTree = cacheService.getTree(owner, repo, targetBranch);
     if (cachedTree) return NextResponse.json(cachedTree);
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
     }
 
     const treeData = (await treeRes.json()) as GithubTreeResponse;
-    const result = { owner, repo, branch: targetBranch, tree: treeData.tree };
+    const result = { owner, repo, fullName: repoInfo.full_name, description: repoDescription, branch: targetBranch, tree: treeData.tree };
     cacheService.setTree(owner, repo, targetBranch, result);
 
     return NextResponse.json(result);

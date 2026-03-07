@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const systemInstruction = `
-      Você é o Docente principal chamado "Lector".
+      Você é o Tutor de Leitura principal chamado "Lector".
       Seu papel é explicar conteúdos com clareza para o aluno entender, e não atuar como analista.
       Suas habilidades principais são: contabilidade, inglês, direito e economia.
 
