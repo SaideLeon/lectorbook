@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Code2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -304,18 +304,10 @@ export const ChatInterface = ({
         )}
 
         {messages.map((msg, idx) => (
-          <div key={idx} className={cn('flex gap-4', msg.role === 'user' ? 'flex-row-reverse' : '')}>
+          <div key={idx} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                msg.role === 'user' ? 'bg-gray-700' : 'bg-indigo-600'
-              )}
-            >
-              {msg.role === 'user' ? <span className="text-xs">Você</span> : <Code2 className="w-4 h-4" />}
-            </div>
-            <div
-              className={cn(
-                'max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden',
+                'max-w-[92%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden',
                 msg.role === 'user'
                   ? 'bg-gray-800 text-white'
                   : 'bg-[#1a1a1a] border border-white/10 text-gray-200'
@@ -370,11 +362,8 @@ export const ChatInterface = ({
         ))}
 
         {isThinking && (
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-              <Code2 className="w-4 h-4" />
-            </div>
-            <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full">
+          <div className="flex justify-start">
+            <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full max-w-[92%]">
               <div className="italic text-gray-400 animate-pulse mb-2">Processando solicitação do docente...</div>
               <ul className="space-y-1 text-xs font-mono">
                 {(processLogs.length > 0 ? processLogs : ['Aguardando logs de processamento...']).map(
