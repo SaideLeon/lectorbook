@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Code2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -75,14 +75,6 @@ function ChatInput({
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useAutoResize(input, isExpanded);
 
-  // Submit on Enter (not Shift+Enter)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (input.trim() && !disabled) onSend();
-    }
-  };
-
   // When collapsing, re-trigger auto-resize
   const toggleExpand = () => {
     setIsExpanded((prev) => {
@@ -112,10 +104,8 @@ function ChatInput({
       {isExpanded && (
         <div className="flex items-center justify-between mb-2 px-1">
           <span className="text-xs text-gray-500">
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Enter</kbd>
-            {' '}envia &nbsp;·&nbsp;
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Shift+Enter</kbd>
-            {' '}nova linha
+            Pressione <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Enter</kbd>
+            {' '}para nova linha e clique no botão para enviar
           </span>
           <button
             type="button"
@@ -140,7 +130,6 @@ function ChatInput({
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="Sugira uma melhoria ou faça uma pergunta..."
           disabled={disabled}
           rows={1}
@@ -178,7 +167,7 @@ function ChatInput({
                 ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                 : 'bg-white/5 text-gray-600 cursor-not-allowed'
             )}
-            title="Enviar (Enter)"
+            title="Enviar"
           >
             <ArrowUp className="w-4 h-4" />
           </button>
@@ -188,8 +177,8 @@ function ChatInput({
       {/* Hint bar below (only in normal mode) */}
       {!isExpanded && (
         <p className="mt-1.5 text-[10px] text-gray-600 text-center select-none">
-          <kbd className="font-mono">Enter</kbd> envia &nbsp;·&nbsp;
-          <kbd className="font-mono">Shift+Enter</kbd> nova linha
+          <kbd className="font-mono">Enter</kbd> nova linha &nbsp;·&nbsp;
+          clique no botão para enviar
         </p>
       )}
     </div>
@@ -315,18 +304,10 @@ export const ChatInterface = ({
         )}
 
         {messages.map((msg, idx) => (
-          <div key={idx} className={cn('flex gap-4', msg.role === 'user' ? 'flex-row-reverse' : '')}>
+          <div key={idx} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                msg.role === 'user' ? 'bg-gray-700' : 'bg-indigo-600'
-              )}
-            >
-              {msg.role === 'user' ? <span className="text-xs">Você</span> : <Code2 className="w-4 h-4" />}
-            </div>
-            <div
-              className={cn(
-                'max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden',
+                'max-w-[92%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden',
                 msg.role === 'user'
                   ? 'bg-gray-800 text-white'
                   : 'bg-[#1a1a1a] border border-white/10 text-gray-200'
@@ -381,11 +362,8 @@ export const ChatInterface = ({
         ))}
 
         {isThinking && (
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-              <Code2 className="w-4 h-4" />
-            </div>
-            <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full">
+          <div className="flex justify-start">
+            <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full max-w-[92%]">
               <div className="italic text-gray-400 animate-pulse mb-2">Processando solicitação do docente...</div>
               <ul className="space-y-1 text-xs font-mono">
                 {(processLogs.length > 0 ? processLogs : ['Aguardando logs de processamento...']).map(

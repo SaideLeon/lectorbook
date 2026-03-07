@@ -1,8 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { jsonError } from '@/app/api/_utils';
 
 export const runtime = 'nodejs';
+
+function getChunkText(chunk: any): string {
+  if (!chunk) return '';
+
+  if (typeof chunk.text === 'string') return chunk.text;
+
+  const partText = chunk?.candidates?.[0]?.content?.parts?.find((p: any) => typeof p?.text === 'string')?.text;
+  return partText || '';
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,24 +44,76 @@ export async function POST(req: NextRequest) {
       { role: 'user', parts: [{ text: currentInput }] },
     ];
 
-    try {
-      const response = await ai.models.generateContent({
-        model: ANALYST_MODEL,
-        contents,
-        config: { systemInstruction, tools: [{ googleSearch: {} }] },
-      });
-      return NextResponse.json(response);
-    } catch (error: any) {
-      if (error.status === 429 || error.message?.includes('429')) {
-        const response = await ai.models.generateContent({
-          model: FALLBACK_MODEL,
+    const streamConfig = { systemInstruction, tools: [{ googleSearch: {} }] };
+
+    const responseStream = await (async () => {
+      try {
+        return await ai.models.generateContentStream({
+          model: ANALYST_MODEL,
           contents,
-          config: { systemInstruction },
+          config: streamConfig,
         });
-        return NextResponse.json(response);
+      } catch (error: any) {
+        if (error?.status === 429 || error?.message?.includes('429')) {
+          return ai.models.generateContentStream({
+            model: FALLBACK_MODEL,
+            contents,
+            config: { systemInstruction },
+          });
+        }
+        throw error;
       }
-      throw error;
-    }
+    })();
+
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const links = new Map<string, { title: string; url: string }>();
+
+        try {
+          for await (const chunk of responseStream as any) {
+            const text = getChunkText(chunk);
+
+            if (text) {
+              controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'chunk', text })}\n`));
+            }
+
+            const groundingChunks = chunk?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+            for (const grounding of groundingChunks) {
+              const url = grounding?.web?.uri;
+              if (!url) continue;
+              links.set(url, {
+                title: grounding?.web?.title || 'Fonte',
+                url,
+              });
+            }
+          }
+
+          controller.enqueue(
+            encoder.encode(
+              `${JSON.stringify({ type: 'done', relatedLinks: Array.from(links.values()) })}\n`
+            )
+          );
+          controller.close();
+        } catch (error) {
+          controller.enqueue(
+            encoder.encode(
+              `${JSON.stringify({ type: 'error', message: error instanceof Error ? error.message : 'Erro desconhecido ao processar resposta.' })}\n`
+            )
+          );
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
+    });
   } catch (error) {
     return jsonError(error);
   }
