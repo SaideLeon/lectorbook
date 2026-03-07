@@ -47,6 +47,7 @@ export default function App() {
   const {
     chatHistory,
     isThinking,
+    isWaitingForFirstChunk,
     analysis,
     isGeneratingReadingSheet,
     processLogs,
@@ -67,6 +68,20 @@ export default function App() {
       setActiveMobileTab('preview');
     }
   }, [selectedFile, maximizedPanel]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const registerServiceWorker = async () => {
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+      } catch (error) {
+        console.error('Falha ao registrar Service Worker:', error);
+      }
+    };
+
+    registerServiceWorker();
+  }, []);
 
   // Handlers
   const handleAnalyze = async (url: string) => {
@@ -233,6 +248,7 @@ export default function App() {
                   messages={chatHistory} 
                   onSendMessage={(msg) => sendMessage(msg, teachingDocs)}
                   isThinking={isThinking}
+                  showThinkingState={isWaitingForFirstChunk}
                   processLogs={processLogs}
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
