@@ -190,6 +190,7 @@ export const ChatInterface = ({
   messages,
   onSendMessage,
   isThinking,
+  showThinkingState = isThinking,
   processLogs = [],
   isMaximized,
   onToggleMaximize,
@@ -199,6 +200,7 @@ export const ChatInterface = ({
   messages: AnalysisMessage[];
   onSendMessage: (msg: string) => void;
   isThinking: boolean;
+  showThinkingState?: boolean;
   processLogs?: string[];
   isMaximized: boolean;
   onToggleMaximize: () => void;
@@ -237,7 +239,7 @@ export const ChatInterface = ({
             <MessageSquare className="w-4 h-4 text-indigo-400" />
             Tutor de Leitura Lector
           </h3>
-          {isThinking && (
+          {showThinkingState && (
             <span className="text-xs text-indigo-400 animate-pulse flex items-center gap-1">
               <Loader2 className="w-3 h-3 animate-spin" />
               Pensando profundamente...
@@ -361,7 +363,7 @@ export const ChatInterface = ({
           </div>
         ))}
 
-        {isThinking && (
+        {showThinkingState && (
           <div className="flex justify-start">
             <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full max-w-[99%]">
               <div className="italic text-gray-400 animate-pulse mb-2">Processando solicitação do docente...</div>

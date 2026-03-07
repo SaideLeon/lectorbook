@@ -7,6 +7,7 @@ import { getResponseText } from '@/utils/ai-helpers';
 export function useAIChat() {
   const [chatHistory, setChatHistory] = useState<AnalysisMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isWaitingForFirstChunk, setIsWaitingForFirstChunk] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isGeneratingReadingSheet, setIsGeneratingReadingSheet] = useState(false);
   const [processLogs, setProcessLogs] = useState<string[]>([]);
@@ -83,6 +84,7 @@ export function useAIChat() {
     const newHistory = [...chatHistory, { role: 'user', content: msg, timestamp: Date.now() } as AnalysisMessage];
     setChatHistory(newHistory);
     setIsThinking(true);
+    setIsWaitingForFirstChunk(true);
     setProcessLogs([]);
 
     try {
@@ -119,6 +121,7 @@ export function useAIChat() {
         limitedContextFiles,
         {
           onChunk: (chunkText: string) => {
+            setIsWaitingForFirstChunk(false);
             streamedText += chunkText;
             setChatHistory(prev => {
               const next = [...prev];
@@ -133,6 +136,7 @@ export function useAIChat() {
             });
           },
           onDone: (relatedLinks) => {
+            setIsWaitingForFirstChunk(false);
             setChatHistory(prev => {
               const next = [...prev];
               const targetIndex = next.findIndex(m => m.timestamp === answerTimestamp && m.role === 'model');
@@ -155,6 +159,7 @@ export function useAIChat() {
 
       appendLog('Concluído com sucesso.');
     } catch (err) {
+      setIsWaitingForFirstChunk(false);
       console.error(err);
       appendLog(`Falha no processamento: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
       setChatHistory(prev => {
@@ -178,6 +183,7 @@ export function useAIChat() {
       });
     } finally {
       setIsThinking(false);
+      setIsWaitingForFirstChunk(false);
     }
   }, [chatHistory, analysis, getNextKey, appendLog]);
 
@@ -219,6 +225,7 @@ export function useAIChat() {
   return {
     chatHistory,
     isThinking,
+    isWaitingForFirstChunk,
     analysis,
     isGeneratingReadingSheet,
     processLogs,

@@ -47,6 +47,7 @@ export default function App() {
   const {
     chatHistory,
     isThinking,
+    isWaitingForFirstChunk,
     analysis,
     isGeneratingReadingSheet,
     processLogs,
@@ -233,6 +234,7 @@ export default function App() {
                   messages={chatHistory} 
                   onSendMessage={(msg) => sendMessage(msg, teachingDocs)}
                   isThinking={isThinking}
+                  showThinkingState={isWaitingForFirstChunk}
                   processLogs={processLogs}
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
