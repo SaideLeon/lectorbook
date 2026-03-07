@@ -28,6 +28,7 @@ export default function App() {
   const {
     repoUrl,
     files,
+    repoDescription,
     isLoading: isRepoLoading,
     error: repoError,
     selectedFile,
@@ -236,6 +237,7 @@ export default function App() {
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
                   repositoryName={repositoryName}
+                  repositoryDescription={repoDescription}
                 />
               </div>
 
