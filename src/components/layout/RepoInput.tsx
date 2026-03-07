@@ -8,17 +8,11 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
   const [userRepos, setUserRepos] = useState<any[]>([]);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
-  const [hasToken, setHasToken] = useState(false);
   const [repoSearch, setRepoSearch] = useState('');
   const [showAllRepos, setShowAllRepos] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('github_token');
-    setHasToken(!!token);
-
-    if (token) {
-      loadUserRepos();
-    }
+    loadUserRepos();
   }, []);
 
   const loadUserRepos = async () => {
@@ -35,47 +29,8 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
     }
   };
 
-  const handleConnectGithub = async () => {
-    try {
-      const res = await fetch('/api/github/auth/url');
-      if (!res.ok) throw new Error('Falha ao obter URL de autenticação');
-      const { url } = await res.json();
-      
-      const width = 600;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      
-      window.open(
-        url,
-        'github_auth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-    } catch (err) {
-      console.error("Erro ao conectar GitHub:", err);
-    }
-  };
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GITHUB_AUTH_SUCCESS') {
-        setHasToken(true);
-        loadUserRepos();
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
-  useEffect(() => {
-    const handleTokenUpdate = () => {
-      const token = localStorage.getItem('github_token');
-      setHasToken(!!token);
-      if (token) loadUserRepos();
-    };
-    window.addEventListener('github_token_updated', handleTokenUpdate);
-    return () => window.removeEventListener('github_token_updated', handleTokenUpdate);
-  }, []);
 
   const filteredRepos = useMemo(() => {
     return userRepos.filter(repo => 
@@ -132,29 +87,11 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
           </div>
         </form>
         
-        {!hasToken && (
-          <div className="space-y-6">
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs md:text-sm text-gray-500">
-              <span>Tente:</span>
-              <button onClick={() => setUrl('https://github.com/facebook/react')} className="hover:text-indigo-400 transition-colors">facebook/react</button>
-              <button onClick={() => setUrl('https://github.com/shadcn-ui/ui')} className="hover:text-indigo-400 transition-colors">shadcn-ui/ui</button>
-            </div>
-            
-            <div className="pt-4">
-              <p className="text-xs text-gray-600 mb-3">Quer navegar nos seus próprios repositórios?</p>
-              <button 
-                onClick={handleConnectGithub}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs text-gray-400 hover:text-white transition-all"
-              >
-                <Github className="w-3 h-3" />
-                Conectar com GitHub (OAuth)
-              </button>
-            </div>
-          </div>
-        )}
 
-        {hasToken && (
           <div className="mt-16 pt-12 border-t border-white/5 space-y-8">
+            <p className="text-xs text-gray-500">
+              A listagem de repositórios usa o token <span className="font-mono text-gray-400">GITHUB_TOKEN</span> configurado no servidor via <span className="font-mono text-gray-400">.env</span>.
+            </p>
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <h3 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Github className="w-6 h-6 text-indigo-400" />
@@ -271,7 +208,6 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
               </div>
             )}
           </div>
-        )}
       </motion.div>
     </div>
   );
