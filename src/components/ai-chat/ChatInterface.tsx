@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Code2, ChevronRight, Youtube, ExternalLink, Check, Copy } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Code2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -43,24 +43,178 @@ const CodeBlock = ({ language, children, ...props }: any) => {
   );
 };
 
-export const ChatInterface = ({ 
-  messages, 
-  onSendMessage, 
+// ─── Auto-resizing textarea hook ───────────────────────────────────────────
+function useAutoResize(value: string, isExpanded: boolean) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || isExpanded) return;
+    // Reset height so shrinkage works correctly
+    el.style.height = 'auto';
+    // Clamp between 44px (1 line) and 200px (≈5 lines)
+    const next = Math.min(el.scrollHeight, 200);
+    el.style.height = `${next}px`;
+  }, [value, isExpanded]);
+
+  return ref;
+}
+
+// ─── Chat input component ───────────────────────────────────────────────────
+function ChatInput({
+  input,
+  setInput,
+  onSend,
+  disabled,
+}: {
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  disabled: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textareaRef = useAutoResize(input, isExpanded);
+
+  // Submit on Enter (not Shift+Enter)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim() && !disabled) onSend();
+    }
+  };
+
+  // When collapsing, re-trigger auto-resize
+  const toggleExpand = () => {
+    setIsExpanded((prev) => {
+      if (prev) {
+        // Collapsing: schedule resize after state update
+        setTimeout(() => {
+          const el = textareaRef.current;
+          if (!el) return;
+          el.style.height = 'auto';
+          el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+        }, 0);
+      }
+      return !prev;
+    });
+  };
+
+  return (
+    <div
+      className={cn(
+        'transition-all duration-300 ease-in-out',
+        isExpanded
+          ? 'fixed inset-x-0 bottom-0 z-50 p-4 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-white/10 shadow-2xl'
+          : 'relative'
+      )}
+    >
+      {/* Expanded header hint */}
+      {isExpanded && (
+        <div className="flex items-center justify-between mb-2 px-1">
+          <span className="text-xs text-gray-500">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Enter</kbd>
+            {' '}envia &nbsp;·&nbsp;
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Shift+Enter</kbd>
+            {' '}nova linha
+          </span>
+          <button
+            type="button"
+            onClick={toggleExpand}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            title="Recolher"
+          >
+            <Minimize2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <div
+        className={cn(
+          'flex items-end gap-2 bg-[#0a0a0a] border rounded-2xl px-3 py-2 transition-all duration-200',
+          'focus-within:border-indigo-500/70 focus-within:ring-1 focus-within:ring-indigo-500/30',
+          isExpanded ? 'border-indigo-500/50 rounded-xl' : 'border-white/10'
+        )}
+      >
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Sugira uma melhoria ou faça uma pergunta..."
+          disabled={disabled}
+          rows={1}
+          className={cn(
+            'flex-1 bg-transparent border-none focus:ring-0 focus:outline-none resize-none',
+            'text-sm text-white placeholder-gray-500 py-1.5 leading-6',
+            'scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent',
+            isExpanded ? 'max-h-[60vh] overflow-y-auto' : 'max-h-[200px] overflow-y-auto'
+          )}
+          style={isExpanded ? { height: '140px' } : undefined}
+        />
+
+        {/* Right-side action buttons */}
+        <div className="flex items-center gap-1 shrink-0 pb-0.5">
+          {/* Expand / collapse toggle */}
+          {!isExpanded && (
+            <button
+              type="button"
+              onClick={toggleExpand}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+              title="Expandir"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Send button */}
+          <button
+            type="button"
+            onClick={() => { if (input.trim() && !disabled) onSend(); }}
+            disabled={!input.trim() || disabled}
+            className={cn(
+              'p-1.5 rounded-lg transition-all duration-200',
+              input.trim() && !disabled
+                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                : 'bg-white/5 text-gray-600 cursor-not-allowed'
+            )}
+            title="Enviar (Enter)"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Hint bar below (only in normal mode) */}
+      {!isExpanded && (
+        <p className="mt-1.5 text-[10px] text-gray-600 text-center select-none">
+          <kbd className="font-mono">Enter</kbd> envia &nbsp;·&nbsp;
+          <kbd className="font-mono">Shift+Enter</kbd> nova linha
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Main ChatInterface component ──────────────────────────────────────────
+export const ChatInterface = ({
+  messages,
+  onSendMessage,
   isThinking,
   processLogs = [],
   isMaximized,
   onToggleMaximize,
   repositoryName,
-  repositoryDescription
-}: { 
-  messages: AnalysisMessage[], 
-  onSendMessage: (msg: string) => void,
-  isThinking: boolean,
-  processLogs?: string[],
-  isMaximized: boolean,
-  onToggleMaximize: () => void,
-  repositoryName?: string,
-  repositoryDescription?: string | null
+  repositoryDescription,
+}: {
+  messages: AnalysisMessage[];
+  onSendMessage: (msg: string) => void;
+  isThinking: boolean;
+  processLogs?: string[];
+  isMaximized: boolean;
+  onToggleMaximize: () => void;
+  repositoryName?: string;
+  repositoryDescription?: string | null;
 }) => {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -73,19 +227,21 @@ export const ChatInterface = ({
     }
   }, [messages, isThinking, processLogs]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = useCallback(() => {
     if (input.trim()) {
       onSendMessage(input);
       setInput('');
     }
-  };
+  }, [input, onSendMessage]);
 
   return (
-    <div className={cn(
-      "flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden transition-all duration-300", 
-      isMaximized ? "h-full" : "h-full lg:h-[600px]"
-    )}>
+    <div
+      className={cn(
+        'flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden transition-all duration-300',
+        isMaximized ? 'h-full' : 'h-full lg:h-[600px]'
+      )}
+    >
+      {/* Header */}
       <div className="p-3 md:p-4 border-b border-white/10 bg-[#151515] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="font-medium flex items-center gap-2">
@@ -99,15 +255,16 @@ export const ChatInterface = ({
             </span>
           )}
         </div>
-        <button 
+        <button
           onClick={onToggleMaximize}
           className="p-1 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-          title={isMaximized ? "Restaurar" : "Maximizar"}
+          title={isMaximized ? 'Restaurar' : 'Maximizar'}
         >
           {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
       </div>
-      
+
+      {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
         {messages.length === 0 && !isThinking && (
           <div className="h-full min-h-[280px] flex items-center justify-center">
@@ -119,7 +276,6 @@ export const ChatInterface = ({
                 <p className="text-indigo-300 font-medium mt-1">{welcomeRepositoryName}</p>
                 <p className="text-gray-400 mt-1">{welcomeRepositoryDescription}</p>
               </div>
-
               <div className="text-sm text-gray-300">
                 <p>Posso:</p>
                 <ul className="mt-1 space-y-1 text-gray-400">
@@ -129,9 +285,7 @@ export const ChatInterface = ({
                   <li>• ajudar na revisão</li>
                 </ul>
               </div>
-
               <p className="text-sm text-gray-300">Exemplo: "Explique este módulo como se eu fosse iniciante."</p>
-
               <div className="flex flex-wrap gap-2 pt-2">
                 <button
                   type="button"
@@ -155,60 +309,67 @@ export const ChatInterface = ({
                   ❓ Tirar dúvidas
                 </button>
               </div>
-
               <p className="text-xs text-gray-500">Faça sua pergunta para começar.</p>
             </div>
           </div>
         )}
 
         {messages.map((msg, idx) => (
-          <div key={idx} className={cn("flex gap-4", msg.role === 'user' ? "flex-row-reverse" : "")}>
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-              msg.role === 'user' ? "bg-gray-700" : "bg-indigo-600"
-            )}>
+          <div key={idx} className={cn('flex gap-4', msg.role === 'user' ? 'flex-row-reverse' : '')}>
+            <div
+              className={cn(
+                'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
+                msg.role === 'user' ? 'bg-gray-700' : 'bg-indigo-600'
+              )}
+            >
               {msg.role === 'user' ? <span className="text-xs">Você</span> : <Code2 className="w-4 h-4" />}
             </div>
-            <div className={cn(
-              "max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden",
-              msg.role === 'user' ? "bg-gray-800 text-white" : "bg-[#1a1a1a] border border-white/10 text-gray-200"
-            )}>
+            <div
+              className={cn(
+                'max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden',
+                msg.role === 'user'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-[#1a1a1a] border border-white/10 text-gray-200'
+              )}
+            >
               <div className="prose prose-invert prose-sm max-w-none break-words">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
                     code(props) {
-                      const {children, className, node, ref, ...rest} = props
-                      const match = /language-(\w+)/.exec(className || '')
+                      const { children, className, node, ref, ...rest } = props;
+                      const match = /language-(\w+)/.exec(className || '');
                       return match ? (
                         <CodeBlock language={match[1]} children={children} {...rest} />
                       ) : (
                         <code {...rest} ref={ref} className={className}>
                           {children}
                         </code>
-                      )
-                    }
+                      );
+                    },
                   }}
                 >
-                  {/* Sanitize content before rendering */}
                   {DOMPurify.sanitize(msg.content)}
                 </ReactMarkdown>
               </div>
-              
-              {/* Grounding / Links */}
+
               {msg.relatedLinks && msg.relatedLinks.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-white/10">
                   <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase">Referências e Recursos</h4>
                   <div className="grid gap-2">
                     {msg.relatedLinks.map((link, i) => (
-                      <a 
-                        key={i} 
-                        href={link.url} 
-                        target="_blank" 
+                      <a
+                        key={i}
+                        href={link.url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 p-2 rounded hover:bg-indigo-500/20 transition-colors"
                       >
-                        {link.url.includes('youtube') ? <Youtube className="w-3 h-3 text-red-500" /> : <ExternalLink className="w-3 h-3" />}
+                        {link.url.includes('youtube') ? (
+                          <Youtube className="w-3 h-3 text-red-500" />
+                        ) : (
+                          <ExternalLink className="w-3 h-3" />
+                        )}
                         <span className="truncate">{link.title || link.url}</span>
                       </a>
                     ))}
@@ -218,42 +379,38 @@ export const ChatInterface = ({
             </div>
           </div>
         ))}
+
         {isThinking && (
-           <div className="flex gap-4">
-             <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-               <Code2 className="w-4 h-4" />
-             </div>
-             <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full">
-               <div className="italic text-gray-400 animate-pulse mb-2">Processando solicitação do docente...</div>
-               <ul className="space-y-1 text-xs font-mono">
-                 {(processLogs.length > 0 ? processLogs : ['Aguardando logs de processamento...']).map((log, idx) => (
-                   <li key={idx} className="text-gray-400">• {log}</li>
-                 ))}
-               </ul>
-             </div>
-           </div>
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
+              <Code2 className="w-4 h-4" />
+            </div>
+            <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 text-sm text-gray-300 w-full">
+              <div className="italic text-gray-400 animate-pulse mb-2">Processando solicitação do docente...</div>
+              <ul className="space-y-1 text-xs font-mono">
+                {(processLogs.length > 0 ? processLogs : ['Aguardando logs de processamento...']).map(
+                  (log, idx) => (
+                    <li key={idx} className="text-gray-400">
+                      • {log}
+                    </li>
+
+                  )
+                )}
+              </ul>
+            </div>
+          </div>
         )}
       </div>
 
-      <form onSubmit={handleSend} className="p-4 bg-[#151515] border-t border-white/10">
-        <div className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Sugira uma melhoria ou faça uma pergunta..."
-            className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3 pr-12 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-            disabled={isThinking}
-          />
-          <button 
-            type="submit" 
-            disabled={!input.trim() || isThinking}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </form>
+      {/* Input area */}
+      <div className="p-3 md:p-4 bg-[#151515] border-t border-white/10">
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSend={handleSend}
+          disabled={isThinking}
+        />
+      </div>
     </div>
   );
 };
