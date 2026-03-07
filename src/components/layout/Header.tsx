@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Code2, Settings, Upload, Key, Maximize, Minimize, Github } from 'lucide-react';
+import { Code2, Settings, Upload, Key, Maximize, Minimize } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 
 interface HeaderProps {
@@ -14,14 +14,8 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-  const [githubToken, setGithubToken] = useState('');
-
-  const [githubStatus, setGithubStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('github_token');
-    if (token) setGithubToken(token);
-
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
@@ -30,45 +24,15 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  const handleSaveToken = async () => {
-    if (githubToken.trim()) {
-      const token = githubToken.trim();
-      localStorage.setItem('github_token', token);
-      
-      try {
-        setGithubStatus("Validando token...");
-        const res = await fetch('/api/github/repos', {
-          headers: { 'x-github-token': token }
-        });
-        
-        if (res.ok) {
-          setGithubStatus("Sucesso! Conectado ao GitHub.");
-          window.dispatchEvent(new Event('github_token_updated'));
-        } else {
-          setGithubStatus("Erro: Token inválido ou sem permissão.");
-        }
-      } catch (err) {
-        setGithubStatus("Erro ao conectar com GitHub.");
-      }
-      setTimeout(() => setGithubStatus(null), 3000);
-    } else {
-      localStorage.removeItem('github_token');
-      setGithubStatus("Token removido.");
-      setTimeout(() => setGithubStatus(null), 3000);
-    }
-  };
-
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
-      } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        }
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
       }
     } catch (err) {
-      console.error("Erro ao alternar tela cheia:", err);
+      console.error('Erro ao alternar tela cheia:', err);
     }
   };
 
@@ -81,54 +45,19 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
       setUploadStatus(`Sucesso! ${count} chaves carregadas.`);
       setTimeout(() => setUploadStatus(null), 3000);
     } catch (err) {
-      setUploadStatus("Erro ao carregar chaves.");
+      setUploadStatus('Erro ao carregar chaves.');
       setTimeout(() => setUploadStatus(null), 3000);
     }
-    
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const handleConnectGithub = async () => {
-    try {
-      const res = await fetch('/api/github/auth/url');
-      if (!res.ok) throw new Error('Falha ao obter URL de autenticação');
-      const { url } = await res.json();
-      
-      const width = 600;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      
-      window.open(
-        url,
-        'github_auth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-    } catch (err) {
-      console.error("Erro ao conectar GitHub:", err);
-    }
-  };
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GITHUB_AUTH_SUCCESS') {
-        const token = event.data.token;
-        localStorage.setItem('github_token', token);
-        setGithubToken(token);
-        // Trigger a custom event or state update to refresh repos
-        window.dispatchEvent(new Event('github_token_updated'));
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
   return (
     <header className="border-b border-white/10 bg-[#0a0a0a]/50 backdrop-blur-md sticky top-0 z-50">
       <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
-        <button 
+        <button
           onClick={onLogoClick}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
@@ -137,17 +66,17 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
           </div>
           <span className="font-semibold text-base md:text-lg tracking-tight text-white truncate max-w-[120px] md:max-w-none">Lectorbook</span>
         </button>
-        
+
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={toggleFullscreen}
             className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
-            title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
           >
             {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
           </button>
 
-          <button 
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
             title="Gerenciar Chaves API"
@@ -167,45 +96,18 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
         title="Gerenciar Chaves API"
       >
         <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-300">GitHub Token (Opcional)</label>
-              <button 
-                onClick={handleConnectGithub}
-                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 rounded-md border border-indigo-500/20 transition-colors"
-              >
-                <Github className="w-3 h-3" />
-                Conectar via OAuth
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={githubToken}
-                onChange={(e) => setGithubToken(e.target.value)}
-                placeholder="ghp_..."
-                className="flex-1 bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              <button
-                onClick={handleSaveToken}
-                className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-              >
-                Salvar
-              </button>
-            </div>
-            <p className="text-xs text-gray-500">
-              Adicione seu token pessoal para aumentar os limites de taxa da API e acessar repositórios privados.
+          <div className="space-y-2 p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5">
+            <p className="text-sm font-medium text-indigo-300">Token do GitHub via .env</p>
+            <p className="text-xs text-gray-400">
+              O token do GitHub deve ser configurado apenas no servidor usando a variável
+              <span className="font-mono text-gray-300"> GITHUB_TOKEN </span>
+              no arquivo <span className="font-mono text-gray-300">.env</span>.
             </p>
-            {githubStatus && (
-              <p className={`text-xs ${githubStatus.includes('Erro') ? 'text-red-400' : 'text-emerald-400'}`}>
-                {githubStatus}
-              </p>
-            )}
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-300">Carregar arquivo de chaves (.txt)</label>
-            <div 
+            <div
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-white/10 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all group"
             >
@@ -213,10 +115,10 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
               <span className="text-sm text-gray-400 group-hover:text-gray-300">Clique para selecionar arquivo</span>
               <span className="text-xs text-gray-600 mt-1">Uma chave por linha</span>
             </div>
-            <input 
-              type="file" 
-              accept=".txt" 
-              ref={fileInputRef} 
+            <input
+              type="file"
+              accept=".txt"
+              ref={fileInputRef}
               onChange={handleFileChange}
               className="hidden"
             />
@@ -232,7 +134,7 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
               <label className="text-sm font-medium text-gray-300">Chaves Carregadas</label>
               <span className="text-xs text-gray-500">{apiKeys.length} chaves</span>
             </div>
-            
+
             <div className="bg-[#111] rounded-lg border border-white/5 max-h-48 overflow-y-auto">
               {apiKeys.length === 0 ? (
                 <div className="p-4 text-center text-xs text-gray-600 italic">

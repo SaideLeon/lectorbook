@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { AppError, jsonError } from '@/app/api/_utils';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const userToken = req.headers.get('x-github-token');
-    if (!userToken) throw new AppError('GitHub token is required to list repositories', 401);
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) throw new AppError('GitHub token is not configured in server environment', 500);
 
     const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100&type=all', {
       headers: {
         'User-Agent': 'Lectorbook',
         Accept: 'application/vnd.github.v3+json',
-        Authorization: `Bearer ${userToken}`,
+        Authorization: `Bearer ${githubToken}`,
       },
     });
 
