@@ -75,14 +75,6 @@ function ChatInput({
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useAutoResize(input, isExpanded);
 
-  // Submit on Enter (not Shift+Enter)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (input.trim() && !disabled) onSend();
-    }
-  };
-
   // When collapsing, re-trigger auto-resize
   const toggleExpand = () => {
     setIsExpanded((prev) => {
@@ -112,10 +104,8 @@ function ChatInput({
       {isExpanded && (
         <div className="flex items-center justify-between mb-2 px-1">
           <span className="text-xs text-gray-500">
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Enter</kbd>
-            {' '}envia &nbsp;·&nbsp;
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Shift+Enter</kbd>
-            {' '}nova linha
+            Pressione <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-mono text-[10px]">Enter</kbd>
+            {' '}para nova linha e clique no botão para enviar
           </span>
           <button
             type="button"
@@ -140,7 +130,6 @@ function ChatInput({
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="Sugira uma melhoria ou faça uma pergunta..."
           disabled={disabled}
           rows={1}
@@ -178,7 +167,7 @@ function ChatInput({
                 ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                 : 'bg-white/5 text-gray-600 cursor-not-allowed'
             )}
-            title="Enviar (Enter)"
+            title="Enviar"
           >
             <ArrowUp className="w-4 h-4" />
           </button>
@@ -188,8 +177,8 @@ function ChatInput({
       {/* Hint bar below (only in normal mode) */}
       {!isExpanded && (
         <p className="mt-1.5 text-[10px] text-gray-600 text-center select-none">
-          <kbd className="font-mono">Enter</kbd> envia &nbsp;·&nbsp;
-          <kbd className="font-mono">Shift+Enter</kbd> nova linha
+          <kbd className="font-mono">Enter</kbd> nova linha &nbsp;·&nbsp;
+          clique no botão para enviar
         </p>
       )}
     </div>
