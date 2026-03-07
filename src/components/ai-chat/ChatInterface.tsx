@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare, Loader2, Maximize2, Minimize2, Code2, ChevronRight, Youtube, ExternalLink, Check, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import DOMPurify from 'dompurify';
@@ -174,6 +175,7 @@ export const ChatInterface = ({
             )}>
               <div className="prose prose-invert prose-sm max-w-none break-words">
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     code(props) {
                       const {children, className, node, ref, ...rest} = props

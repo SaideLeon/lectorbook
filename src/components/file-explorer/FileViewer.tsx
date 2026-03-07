@@ -3,6 +3,7 @@ import { FileCode, FileText, Minimize2, Maximize2, X, ArrowLeft, ArrowRight, Cop
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
 export const FileViewer = ({ 
@@ -93,7 +94,7 @@ export const FileViewer = ({
       <div className="flex-1 overflow-auto text-sm bg-[#0d0d0d]">
         {isMarkdownFile ? (
           <article className="prose prose-invert prose-sm max-w-none p-6">
-            <ReactMarkdown>{file.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{file.content}</ReactMarkdown>
           </article>
         ) : isTextFile ? (
           <div className="p-6 text-gray-200 leading-relaxed whitespace-pre-wrap font-mono text-xs md:text-sm">
