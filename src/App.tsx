@@ -69,6 +69,20 @@ export default function App() {
     }
   }, [selectedFile, maximizedPanel]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const registerServiceWorker = async () => {
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+      } catch (error) {
+        console.error('Falha ao registrar Service Worker:', error);
+      }
+    };
+
+    registerServiceWorker();
+  }, []);
+
   // Handlers
   const handleAnalyze = async (url: string) => {
     await analyzeRepository(url, performInitialAnalysis);
