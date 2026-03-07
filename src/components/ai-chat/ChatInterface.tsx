@@ -48,17 +48,20 @@ export const ChatInterface = ({
   isThinking,
   processLogs = [],
   isMaximized,
-  onToggleMaximize
+  onToggleMaximize,
+  repositoryName
 }: { 
   messages: AnalysisMessage[], 
   onSendMessage: (msg: string) => void,
   isThinking: boolean,
   processLogs?: string[],
   isMaximized: boolean,
-  onToggleMaximize: () => void
+  onToggleMaximize: () => void,
+  repositoryName?: string
 }) => {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const welcomeRepositoryName = repositoryName || 'este repositório';
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -102,6 +105,16 @@ export const ChatInterface = ({
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
+        {messages.length === 0 && !isThinking && (
+          <div className="h-full min-h-[220px] flex items-center justify-center">
+            <div className="max-w-md text-center bg-[#151515] border border-white/10 rounded-xl p-5">
+              <p className="text-sm text-gray-300">
+                Bem vindo ao lectorbook, faça me pergunta sobre <span className="text-indigo-300 font-medium">{welcomeRepositoryName}</span> ou você quer que eu resuma.
+              </p>
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, idx) => (
           <div key={idx} className={cn("flex gap-4", msg.role === 'user' ? "flex-row-reverse" : "")}>
             <div className={cn(

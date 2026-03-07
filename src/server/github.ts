@@ -6,8 +6,8 @@ export function getGithubHeaders(req: NextRequest) {
     Accept: 'application/vnd.github.v3+json',
   };
 
-  const userToken = req.headers.get('x-github-token');
-  if (userToken) headers.Authorization = `Bearer ${userToken}`;
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (githubToken) headers.Authorization = `Bearer ${githubToken}`;
 
   return headers;
 }
