@@ -31,6 +31,7 @@ export default function App() {
     isLoading: isRepoLoading,
     error: repoError,
     selectedFile,
+    teachingDocs,
     fileHistory,
     currentHistoryIndex,
     analyzeRepository,
@@ -47,6 +48,7 @@ export default function App() {
     isThinking,
     analysis,
     isGeneratingBlueprint,
+    processLogs,
     performInitialAnalysis,
     sendMessage,
     generateProjectBlueprint,
@@ -73,7 +75,12 @@ export default function App() {
 
   const handleGenerateBlueprint = async () => {
     if (!repoUrl || !analysis) return;
-    const contextFiles = selectedFile ? [selectedFile] : [];
+    const contextFiles =
+      teachingDocs.length > 0
+        ? teachingDocs
+        : selectedFile
+        ? [selectedFile]
+        : [];
     const loadingToastId = showToast("Gerando blueprint do projeto...", "loading", 0);
     
     try {
@@ -216,8 +223,9 @@ export default function App() {
                 
                 <ChatInterface 
                   messages={chatHistory} 
-                  onSendMessage={sendMessage}
+                  onSendMessage={(msg) => sendMessage(msg, teachingDocs)}
                   isThinking={isThinking}
+                  processLogs={processLogs}
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
                 />
