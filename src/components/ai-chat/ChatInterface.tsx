@@ -48,17 +48,23 @@ export const ChatInterface = ({
   isThinking,
   processLogs = [],
   isMaximized,
-  onToggleMaximize
+  onToggleMaximize,
+  repositoryName,
+  repositoryDescription
 }: { 
   messages: AnalysisMessage[], 
   onSendMessage: (msg: string) => void,
   isThinking: boolean,
   processLogs?: string[],
   isMaximized: boolean,
-  onToggleMaximize: () => void
+  onToggleMaximize: () => void,
+  repositoryName?: string,
+  repositoryDescription?: string | null
 }) => {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const welcomeRepositoryName = repositoryName || 'este repositório';
+  const welcomeRepositoryDescription = repositoryDescription || 'Sem descrição disponível no repositório.';
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -102,6 +108,58 @@ export const ChatInterface = ({
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
+        {messages.length === 0 && !isThinking && (
+          <div className="h-full min-h-[280px] flex items-center justify-center">
+            <div className="max-w-2xl text-left bg-[#151515] border border-white/10 rounded-xl p-6 space-y-4">
+              <p className="text-xl text-white font-semibold">👋 Bem-vindo ao LectorBook</p>
+              <p className="text-sm text-gray-300">Sou seu assistente de estudo.</p>
+              <div className="text-sm text-gray-300">
+                <p>Aqui você pode aprender sobre:</p>
+                <p className="text-indigo-300 font-medium mt-1">{welcomeRepositoryName}</p>
+                <p className="text-gray-400 mt-1">{welcomeRepositoryDescription}</p>
+              </div>
+
+              <div className="text-sm text-gray-300">
+                <p>Posso:</p>
+                <ul className="mt-1 space-y-1 text-gray-400">
+                  <li>• explicar conteúdos</li>
+                  <li>• resumir módulos</li>
+                  <li>• responder dúvidas</li>
+                  <li>• ajudar na revisão</li>
+                </ul>
+              </div>
+
+              <p className="text-sm text-gray-300">Exemplo: "Explique este módulo como se eu fosse iniciante."</p>
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => onSendMessage('Explique este módulo de forma simples.')}
+                  className="px-3 py-2 text-xs rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition-colors"
+                >
+                  📖 Explicar módulo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSendMessage('Resuma este conteúdo.')}
+                  className="px-3 py-2 text-xs rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition-colors"
+                >
+                  🧠 Resumir conteúdo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSendMessage('Quais são os conceitos principais?')}
+                  className="px-3 py-2 text-xs rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition-colors"
+                >
+                  ❓ Tirar dúvidas
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500">Faça sua pergunta para começar.</p>
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, idx) => (
           <div key={idx} className={cn("flex gap-4", msg.role === 'user' ? "flex-row-reverse" : "")}>
             <div className={cn(

@@ -28,6 +28,7 @@ export default function App() {
   const {
     repoUrl,
     files,
+    repoDescription,
     isLoading: isRepoLoading,
     error: repoError,
     selectedFile,
@@ -95,6 +96,13 @@ export default function App() {
       showToast(msg, "error");
     }
   };
+
+  const repositoryName = (() => {
+    if (!repoUrl) return undefined;
+    const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
+    const match = cleanUrl.match(/github\.com\/[^/]+\/([^/]+)/);
+    return match?.[1] || cleanUrl.split('/').pop();
+  })();
 
   const handleFileSelect = async (path: string) => {
     await selectFile(path);
@@ -228,6 +236,8 @@ export default function App() {
                   processLogs={processLogs}
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
+                  repositoryName={repositoryName}
+                  repositoryDescription={repoDescription}
                 />
               </div>
 
