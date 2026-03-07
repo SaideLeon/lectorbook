@@ -2,35 +2,25 @@ import { RepoTreeResponse } from '@/types';
 
 const fileCache = new Map<string, string>();
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('github_token');
-  return token ? { 'x-github-token': token } : {};
-};
-
 export const githubApi = {
   async getUserRepos(): Promise<any[]> {
-    const headers = getAuthHeaders();
-    if (!headers['x-github-token']) return [];
-
-    const res = await fetch('/api/github/repos', { headers });
+    const res = await fetch('/api/github/repos');
     if (!res.ok) {
-        let errorMsg = "Falha ao buscar repositórios";
-        try {
-            const errData = await res.json();
-            errorMsg = errData.error || errData.message || errorMsg;
-        } catch {
-            errorMsg += ` (${res.status} ${res.statusText})`;
-        }
-        throw new Error(errorMsg);
+      let errorMsg = "Falha ao buscar repositórios";
+      try {
+        const errData = await res.json();
+        errorMsg = errData.error || errData.message || errorMsg;
+      } catch {
+        errorMsg += ` (${res.status} ${res.statusText})`;
+      }
+      throw new Error(errorMsg);
     }
     return res.json();
   },
 
   async getTree(owner: string, repo: string): Promise<RepoTreeResponse> {
-    const res = await fetch(`/api/github/tree?owner=${owner}&repo=${repo}`, {
-      headers: getAuthHeaders()
-    });
-    
+    const res = await fetch(`/api/github/tree?owner=${owner}&repo=${repo}`);
+
     if (!res.ok) {
       let errorMsg = "Falha ao buscar repositório.";
       try {
@@ -39,19 +29,19 @@ export const githubApi = {
       } catch {
         errorMsg += ` (${res.status} ${res.statusText})`;
       }
-      
+
       if (res.status === 404) {
         errorMsg = "Repositório não encontrado ou privado. Esta ferramenta suporta apenas repositórios públicos.";
       } else if (res.status === 403) {
         errorMsg = "Limite de taxa da API do GitHub excedido. Tente novamente mais tarde.";
       }
-      
+
       throw new Error(errorMsg);
     }
 
-    const contentType = res.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new Error("Recebeu resposta não-JSON do servidor. Verifique se o servidor está rodando corretamente.");
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Recebeu resposta não-JSON do servidor. Verifique se o servidor está rodando corretamente.');
     }
 
     return res.json();
@@ -63,11 +53,9 @@ export const githubApi = {
       return fileCache.get(cacheKey)!;
     }
 
-    const res = await fetch(`/api/github/content?owner=${owner}&repo=${repo}&path=${path}&branch=${branch}`, {
-      headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error("Falha ao buscar arquivo");
-    
+    const res = await fetch(`/api/github/content?owner=${owner}&repo=${repo}&path=${path}&branch=${branch}`);
+    if (!res.ok) throw new Error('Falha ao buscar arquivo');
+
     const text = await res.text();
     fileCache.set(cacheKey, text);
     return text;
