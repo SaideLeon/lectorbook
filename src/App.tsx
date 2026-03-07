@@ -75,7 +75,12 @@ export default function App() {
 
   const handleGenerateBlueprint = async () => {
     if (!repoUrl || !analysis) return;
-    const contextFiles = selectedFile ? [selectedFile] : [];
+    const contextFiles =
+      teachingDocs.length > 0
+        ? teachingDocs
+        : selectedFile
+        ? [selectedFile]
+        : [];
     const loadingToastId = showToast("Gerando blueprint do projeto...", "loading", 0);
     
     try {

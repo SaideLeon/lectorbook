@@ -69,7 +69,7 @@ export function useGithubRepository() {
 
       setTeachingDocs(availableDocs);
 
-      await performAnalysis(fileContents);
+      await performAnalysis([...fileContents, ...availableDocs]);
       
       return { owner, repo, allFiles: allNodes, branch: currentBranch };
     } catch (err) {
