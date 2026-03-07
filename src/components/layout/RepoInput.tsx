@@ -90,7 +90,7 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
 
           <div className="mt-16 pt-12 border-t border-white/5 space-y-8">
             <p className="text-xs text-gray-500">
-              A listagem de repositórios usa o token <span className="font-mono text-gray-400">GITHUB_TOKEN</span> configurado no servidor via <span className="font-mono text-gray-400">.env</span>.
+              Para usar os recursos de IA, gere sua API Key no AI Studio: <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer" className="font-mono text-indigo-400 hover:text-indigo-300 underline">https://aistudio.google.com/api-keys</a>.
             </p>
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <h3 className="text-xl font-semibold text-white flex items-center gap-2">
