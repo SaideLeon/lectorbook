@@ -96,6 +96,13 @@ export default function App() {
     }
   };
 
+  const repositoryName = (() => {
+    if (!repoUrl) return undefined;
+    const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
+    const match = cleanUrl.match(/github\.com\/[^/]+\/([^/]+)/);
+    return match?.[1] || cleanUrl.split('/').pop();
+  })();
+
   const handleFileSelect = async (path: string) => {
     await selectFile(path);
     setIsSidebarOpen(false);
@@ -228,6 +235,7 @@ export default function App() {
                   processLogs={processLogs}
                   isMaximized={maximizedPanel === 'chat'}
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
+                  repositoryName={repositoryName}
                 />
               </div>
 
