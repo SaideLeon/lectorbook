@@ -1,7 +1,7 @@
 # Lectorbook
 
 Lectorbook é uma aplicação web para **analisar repositórios GitHub com apoio de IA**.
-A interface permite carregar a árvore de arquivos de um repositório, visualizar conteúdos de arquivos, conversar com um assistente sobre o código e gerar um blueprint inicial do projeto.
+A interface permite carregar a árvore de arquivos de um repositório, visualizar conteúdos de arquivos, conversar com um assistente sobre o código e gerar uma ficha de leitura do conteúdo.
 
 > Stack principal: **Next.js (App Router)** + **React 19** + rotas API no servidor.
 
@@ -10,7 +10,7 @@ A interface permite carregar a árvore de arquivos de um repositório, visualiza
 - Analisa repositórios GitHub a partir de URL.
 - Exibe árvore de arquivos e visualização de conteúdo.
 - Permite chat contextual sobre o repositório carregado.
-- Gera blueprint de projeto com base na análise.
+- Gera ficha de leitura com base na análise.
 - Suporta cache de dados de GitHub no backend para reduzir chamadas repetidas.
 
 ## Arquitetura (visão rápida)
@@ -63,7 +63,7 @@ A aplicação ficará disponível em `http://localhost:3000`.
 2. Informe a URL de um repositório GitHub.
 3. Aguarde a leitura da árvore de arquivos.
 4. Navegue pelos arquivos e faça perguntas no chat.
-5. Opcionalmente, gere um blueprint do projeto.
+5. Opcionalmente, gere uma ficha de leitura.
 
 ## Estrutura de pastas (resumida)
 
