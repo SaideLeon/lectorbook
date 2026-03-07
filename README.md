@@ -1,4 +1,4 @@
-# Brada Iota (Next.js)
+# Lectorbook (Next.js)
 
 Aplicação migrada para **Next.js (App Router)**, mantendo o mesmo design da interface.
 
