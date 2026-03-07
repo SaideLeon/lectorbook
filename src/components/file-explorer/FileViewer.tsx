@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { FileCode, Minimize2, Maximize2, X, ArrowLeft, ArrowRight, Copy, Check } from 'lucide-react';
+import { FileCode, FileText, Minimize2, Maximize2, X, ArrowLeft, ArrowRight, Copy, Check } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
 export const FileViewer = ({ 
@@ -23,7 +24,9 @@ export const FileViewer = ({
   canGoBack: boolean,
   canGoForward: boolean
 }) => {
-  const extension = file.path.split('.').pop() || 'text';
+  const extension = file.path.split('.').pop()?.toLowerCase() || 'text';
+  const isMarkdownFile = extension === 'md';
+  const isTextFile = extension === 'txt';
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -34,8 +37,8 @@ export const FileViewer = ({
 
   return (
     <div className={cn(
-      "flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden relative transition-all duration-300", 
-      isMaximized ? "h-full" : "h-full lg:h-[600px]"
+      'flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden relative transition-all duration-300', 
+      isMaximized ? 'h-full' : 'h-full lg:h-[600px]'
     )}>
       <div className="p-3 md:p-4 border-b border-white/10 bg-[#151515] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -58,7 +61,11 @@ export const FileViewer = ({
             </button>
           </div>
           <h3 className="font-medium flex items-center gap-2 truncate text-sm">
-            <FileCode className="w-4 h-4 text-indigo-400 shrink-0" />
+            {(isMarkdownFile || isTextFile) ? (
+              <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+            ) : (
+              <FileCode className="w-4 h-4 text-indigo-400 shrink-0" />
+            )}
             <span className="truncate">{file.path}</span>
           </h3>
         </div>
@@ -73,7 +80,7 @@ export const FileViewer = ({
           <button 
             onClick={onToggleMaximize} 
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white hidden md:block"
-            title={isMaximized ? "Restaurar" : "Maximizar"}
+            title={isMaximized ? 'Restaurar' : 'Maximizar'}
           >
             {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -82,15 +89,26 @@ export const FileViewer = ({
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto text-sm">
-        <SyntaxHighlighter
-          language={extension}
-          style={atomDark}
-          showLineNumbers
-          customStyle={{ margin: 0, padding: '1.5rem', background: '#0d0d0d', minHeight: '100%' }}
-        >
-          {file.content}
-        </SyntaxHighlighter>
+
+      <div className="flex-1 overflow-auto text-sm bg-[#0d0d0d]">
+        {isMarkdownFile ? (
+          <article className="prose prose-invert prose-sm max-w-none p-6">
+            <ReactMarkdown>{file.content}</ReactMarkdown>
+          </article>
+        ) : isTextFile ? (
+          <div className="p-6 text-gray-200 leading-relaxed whitespace-pre-wrap font-mono text-xs md:text-sm">
+            {file.content}
+          </div>
+        ) : (
+          <SyntaxHighlighter
+            language={extension}
+            style={atomDark}
+            showLineNumbers
+            customStyle={{ margin: 0, padding: '1.5rem', background: '#0d0d0d', minHeight: '100%' }}
+          >
+            {file.content}
+          </SyntaxHighlighter>
+        )}
       </div>
     </div>
   );
