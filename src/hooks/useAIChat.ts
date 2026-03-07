@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { AnalysisMessage } from '@/types';
-import { analyzeCode, thinkAndSuggest, generateReadingSheet as generateReadingSheetService } from '@/services/ai';
+import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
 
@@ -101,42 +101,81 @@ export function useAIChat() {
       }
 
       appendLog('Enviando contexto e pergunta para o modelo de IA...');
-      const response = await thinkAndSuggest(
+
+      const answerTimestamp = Date.now();
+      setChatHistory(prev => [...prev, {
+        role: 'model',
+        content: '',
+        timestamp: answerTimestamp,
+        relatedLinks: []
+      }]);
+
+      let streamedText = '';
+
+      await thinkAndSuggestStream(
         newHistory.map(h => ({ role: h.role, content: h.content })),
         msg,
         analysis || 'Nenhum contexto disponível.',
         limitedContextFiles,
+        {
+          onChunk: (chunkText: string) => {
+            streamedText += chunkText;
+            setChatHistory(prev => {
+              const next = [...prev];
+              const targetIndex = next.findIndex(m => m.timestamp === answerTimestamp && m.role === 'model');
+              if (targetIndex === -1) return prev;
+
+              next[targetIndex] = {
+                ...next[targetIndex],
+                content: streamedText,
+              };
+              return next;
+            });
+          },
+          onDone: (relatedLinks) => {
+            setChatHistory(prev => {
+              const next = [...prev];
+              const targetIndex = next.findIndex(m => m.timestamp === answerTimestamp && m.role === 'model');
+              if (targetIndex === -1) return prev;
+
+              next[targetIndex] = {
+                ...next[targetIndex],
+                relatedLinks,
+              };
+              return next;
+            });
+          }
+        },
         activeKey
       );
 
-      appendLog('Resposta recebida. Processando conteúdo e referências...');
-      const responseText = getResponseText(response);
-      
-      if (!responseText) {
-         throw new Error('A resposta da IA veio vazia.');
+      if (!streamedText.trim()) {
+        throw new Error('A resposta da IA veio vazia.');
       }
-      
-      const links = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((c: any) => ({
-        title: c.web?.title || 'Fonte',
-        url: c.web?.uri
-      })).filter((l: any): l is { title: string; url: string } => !!l.url) || [];
-
-      setChatHistory(prev => [...prev, {
-        role: 'model',
-        content: responseText,
-        timestamp: Date.now(),
-        relatedLinks: links
-      }]);
 
       appendLog('Concluído com sucesso.');
     } catch (err) {
       console.error(err);
       appendLog(`Falha no processamento: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
-      setChatHistory(prev => [...prev, {
-        role: 'model',
-        content: `Erro: ${err instanceof Error ? err.message : 'Erro desconhecido ao processar resposta.'}`,
-        timestamp: Date.now()
-      }]);
+      setChatHistory(prev => {
+        const next = [...prev];
+        const lastModelIndex = [...next].reverse().findIndex((m) => m.role === 'model');
+
+        if (lastModelIndex !== -1) {
+          const targetIndex = next.length - 1 - lastModelIndex;
+          next[targetIndex] = {
+            ...next[targetIndex],
+            content: `Erro: ${err instanceof Error ? err.message : 'Erro desconhecido ao processar resposta.'}`,
+          };
+          return next;
+        }
+
+        return [...next, {
+          role: 'model',
+          content: `Erro: ${err instanceof Error ? err.message : 'Erro desconhecido ao processar resposta.'}`,
+          timestamp: Date.now()
+        }];
+      });
     } finally {
       setIsThinking(false);
     }
