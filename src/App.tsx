@@ -245,8 +245,17 @@ export default function App() {
                 maximizedPanel === 'file' ? "hidden" : (activeMobileTab !== 'chat' ? "hidden lg:flex" : "flex")
               )}>
                 {repoError && (
-                  <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs">
-                    Erro: {repoError}
+                  <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-xl text-xs flex items-start justify-between gap-3">
+                    <span>Erro: {repoError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setRepoError(null)}
+                      className="p-1 rounded-md hover:bg-red-500/20 text-red-300 hover:text-red-100 transition-colors"
+                      title="Fechar notificação de erro"
+                      aria-label="Fechar notificação de erro"
+                    >
+                      <CloseIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
                 
