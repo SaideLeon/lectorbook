@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -66,16 +66,76 @@ function ChatInput({
   setInput,
   onSend,
   disabled,
+  onTranscribeAudio,
+  isTranscribingAudio,
 }: {
   input: string;
-  setInput: (v: string) => void;
+  setInput: Dispatch<SetStateAction<string>>;
   onSend: () => void;
   disabled: boolean;
+  onTranscribeAudio: (file: File) => Promise<string>;
+  isTranscribingAudio: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingRecording, setIsProcessingRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
   const textareaRef = useAutoResize(input, isExpanded);
 
   // When collapsing, re-trigger auto-resize
+
+
+  const handleStopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+  }, []);
+
+  const handleToggleRecording = useCallback(async () => {
+    if (isRecording) {
+      handleStopRecording();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const ext = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
+        const audioFile = new File([audioBlob], `recording.${ext}`, { type: audioBlob.type || 'audio/webm' });
+
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecording(false);
+        setIsProcessingRecording(true);
+
+        try {
+          const text = await onTranscribeAudio(audioFile);
+          if (text.trim()) {
+            setInput((prev) => (prev ? `${prev} ${text}` : text));
+          }
+        } catch (error) {
+          console.error('Falha ao transcrever áudio:', error);
+        } finally {
+          setIsProcessingRecording(false);
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Falha ao iniciar gravação de áudio:', error);
+    }
+  }, [handleStopRecording, isRecording, onTranscribeAudio, setInput]);
+
   const toggleExpand = () => {
     setIsExpanded((prev) => {
       if (prev) {
@@ -156,6 +216,28 @@ function ChatInput({
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={handleToggleRecording}
+            disabled={disabled || isTranscribingAudio || isProcessingRecording}
+            className={cn(
+              'p-1.5 rounded-lg transition-all duration-200',
+              isRecording
+                ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white',
+              (disabled || isTranscribingAudio || isProcessingRecording) && 'opacity-60 cursor-not-allowed'
+            )}
+            title={isRecording ? 'Parar gravação' : 'Gravar áudio'}
+          >
+            {isTranscribingAudio || isProcessingRecording ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isRecording ? (
+              <Square className="w-4 h-4" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </button>
+
           {/* Send button */}
           <button
             type="button"
@@ -196,6 +278,8 @@ export const ChatInterface = ({
   onToggleMaximize,
   repositoryName,
   repositoryDescription,
+  onTranscribeAudio,
+  isTranscribingAudio = false,
 }: {
   messages: AnalysisMessage[];
   onSendMessage: (msg: string) => void;
@@ -206,6 +290,8 @@ export const ChatInterface = ({
   onToggleMaximize: () => void;
   repositoryName?: string;
   repositoryDescription?: string | null;
+  onTranscribeAudio: (file: File) => Promise<string>;
+  isTranscribingAudio?: boolean;
 }) => {
   const [input, setInput] = useState('');
   const [copiedMessageKey, setCopiedMessageKey] = useState<string | null>(null);
@@ -429,6 +515,8 @@ export const ChatInterface = ({
           setInput={setInput}
           onSend={handleSend}
           disabled={isThinking}
+          onTranscribeAudio={onTranscribeAudio}
+          isTranscribingAudio={isTranscribingAudio}
         />
       </div>
     </div>
