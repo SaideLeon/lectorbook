@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause } from 'lucide-react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause, Radio } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -68,6 +68,8 @@ function ChatInput({
   disabled,
   onTranscribeAudio,
   isTranscribingAudio,
+  onSendLiveVoiceMessage,
+  isLiveModeActive,
 }: {
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
@@ -75,16 +77,25 @@ function ChatInput({
   disabled: boolean;
   onTranscribeAudio: (file: File) => Promise<string>;
   isTranscribingAudio: boolean;
+  onSendLiveVoiceMessage: (message: string) => Promise<{ audioBase64: string; mimeType: string }>;
+  isLiveModeActive: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingRecording, setIsProcessingRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const liveAudioRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useAutoResize(input, isExpanded);
 
   // When collapsing, re-trigger auto-resize
 
+
+  useEffect(() => {
+    return () => {
+      liveAudioRef.current?.pause();
+    };
+  }, []);
 
   const handleStopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop();
@@ -135,6 +146,37 @@ function ChatInput({
       console.error('Falha ao iniciar gravação de áudio:', error);
     }
   }, [handleStopRecording, isRecording, onTranscribeAudio, setInput]);
+
+
+
+  const handleLiveVoiceTurn = useCallback(async () => {
+    if (!input.trim() || disabled || isLiveModeActive) return;
+
+    try {
+      const { audioBase64, mimeType } = await onSendLiveVoiceMessage(input.trim());
+      setInput('');
+
+      const binary = atob(audioBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      const audioBlob = new Blob([bytes], { type: mimeType || 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      liveAudioRef.current?.pause();
+      const audio = new Audio(audioUrl);
+      liveAudioRef.current = audio;
+
+      audio.onended = () => URL.revokeObjectURL(audioUrl);
+      audio.onerror = () => URL.revokeObjectURL(audioUrl);
+
+      await audio.play();
+    } catch (error) {
+      console.error('Falha na conversa ao vivo:', error);
+    }
+  }, [disabled, input, isLiveModeActive, onSendLiveVoiceMessage, setInput]);
 
   const toggleExpand = () => {
     setIsExpanded((prev) => {
@@ -238,6 +280,21 @@ function ChatInput({
             )}
           </button>
 
+          <button
+            type="button"
+            onClick={handleLiveVoiceTurn}
+            disabled={!input.trim() || disabled || isLiveModeActive}
+            className={cn(
+              'p-1.5 rounded-lg transition-all duration-200',
+              input.trim() && !disabled && !isLiveModeActive
+                ? 'bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200'
+                : 'bg-white/5 text-gray-600 cursor-not-allowed'
+            )}
+            title="Conversa ao vivo"
+          >
+            {isLiveModeActive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
+          </button>
+
           {/* Send button */}
           <button
             type="button"
@@ -282,6 +339,8 @@ export const ChatInterface = ({
   isTranscribingAudio = false,
   onSynthesizeAudio,
   isSynthesizingAudio = false,
+  onSendLiveVoiceMessage,
+  isLiveModeActive = false,
 }: {
   messages: AnalysisMessage[];
   onSendMessage: (msg: string) => void;
@@ -296,6 +355,8 @@ export const ChatInterface = ({
   isTranscribingAudio?: boolean;
   onSynthesizeAudio: (text: string) => Promise<{ audioBase64: string; mimeType: string }>;
   isSynthesizingAudio?: boolean;
+  onSendLiveVoiceMessage: (message: string) => Promise<{ audioBase64: string; mimeType: string }>;
+  isLiveModeActive?: boolean;
 }) => {
   const [input, setInput] = useState('');
   const [copiedMessageKey, setCopiedMessageKey] = useState<string | null>(null);
@@ -593,6 +654,8 @@ export const ChatInterface = ({
           disabled={isThinking}
           onTranscribeAudio={onTranscribeAudio}
           isTranscribingAudio={isTranscribingAudio}
+          onSendLiveVoiceMessage={onSendLiveVoiceMessage}
+          isLiveModeActive={isLiveModeActive}
         />
       </div>
     </div>

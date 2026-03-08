@@ -141,6 +141,36 @@ export async function synthesizeTextToSpeech(text: string, apiKey?: string) {
   return response.json() as Promise<{ audioBase64: string; mimeType: string }>;
 }
 
+
+export async function sendLiveVoiceTurn(
+  history: { role: string; content: string }[],
+  currentInput: string,
+  context: string,
+  contextFiles: { path: string; content: string }[] = [],
+  apiKey?: string
+) {
+  const response = await fetch('/api/ai/live-turn', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ history, currentInput, context, contextFiles, apiKey }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = response.statusText;
+    try {
+      const errorBody = await response.json();
+      if (errorBody.error) {
+        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+    throw new Error(`Conversa ao vivo falhou: ${errorMessage}`);
+  }
+
+  return response.json() as Promise<{ text: string; audioBase64: string; mimeType: string }>;
+}
+
 type StreamEvent =
   | { type: 'chunk'; text: string }
   | { type: 'done'; relatedLinks?: { title: string; url: string }[] }

@@ -52,11 +52,13 @@ export default function App() {
     isGeneratingReadingSheet,
     isTranscribingAudio,
     isSynthesizingAudio,
+    isLiveModeActive,
     processLogs,
     performInitialAnalysis,
     sendMessage,
     transcribeAudioMessage,
     synthesizeMessageAudio,
+    sendLiveVoiceMessage,
     generateReadingSheet,
     apiKeys,
     keyIndex,
@@ -262,6 +264,8 @@ export default function App() {
                   isTranscribingAudio={isTranscribingAudio}
                   onSynthesizeAudio={synthesizeMessageAudio}
                   isSynthesizingAudio={isSynthesizingAudio}
+                  onSendLiveVoiceMessage={(msg) => sendLiveVoiceMessage(msg, teachingDocs)}
+                  isLiveModeActive={isLiveModeActive}
                 />
               </div>
 
