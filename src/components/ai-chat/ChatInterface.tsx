@@ -208,6 +208,7 @@ export const ChatInterface = ({
   repositoryDescription?: string | null;
 }) => {
   const [input, setInput] = useState('');
+  const [copiedMessageKey, setCopiedMessageKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const welcomeRepositoryName = repositoryName || 'este repositório';
   const welcomeRepositoryDescription = repositoryDescription || 'Sem descrição disponível no repositório.';
@@ -224,6 +225,18 @@ export const ChatInterface = ({
       setInput('');
     }
   }, [input, onSendMessage]);
+
+  const handleCopyMessage = useCallback(async (content: string, key: string) => {
+    if (!content?.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageKey(key);
+      setTimeout(() => setCopiedMessageKey((prev) => (prev === key ? null : prev)), 2000);
+    } catch (error) {
+      console.error('Falha ao copiar mensagem:', error);
+    }
+  }, []);
 
   return (
     <div
@@ -305,8 +318,10 @@ export const ChatInterface = ({
           </div>
         )}
 
-        {messages.map((msg, idx) => (
-          <div key={idx} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+        {messages.map((msg, idx) => {
+          const messageKey = `${msg.timestamp || idx}-${msg.role}-${idx}`;
+          return (
+          <div key={messageKey} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
                 'max-w-[99%] rounded-2xl p-4 text-sm leading-relaxed overflow-hidden',
@@ -315,6 +330,30 @@ export const ChatInterface = ({
                   : 'bg-[#1a1a1a] border border-white/10 text-gray-200'
               )}
             >
+              {msg.role === 'model' && (
+                <div className="mb-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyMessage(msg.content, messageKey)}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300 hover:text-white transition-colors"
+                    title="Copiar resposta"
+                    aria-label="Copiar resposta da IA"
+                  >
+                    {copiedMessageKey === messageKey ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-green-400" />
+                        Copiado
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copiar
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
               <div className="prose prose-invert prose-sm max-w-none break-words">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -361,7 +400,8 @@ export const ChatInterface = ({
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
 
         {showThinkingState && (
           <div className="flex justify-start">
