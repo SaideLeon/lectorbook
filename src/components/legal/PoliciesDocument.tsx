@@ -650,7 +650,7 @@ export function PoliciesDocument() {
     <section className="policy-doc mx-auto max-w-4xl px-6 py-10 text-gray-800">
       <div dangerouslySetInnerHTML={{ __html: policiesHtml }} />
 
-      <style jsx global>{`
+      <style>{`
         .policy-doc p.MsoNormal,
         .policy-doc li.MsoNormal,
         .policy-doc div.MsoNormal,
