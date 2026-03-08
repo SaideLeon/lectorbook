@@ -7,6 +7,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 import { AnalysisMessage } from '@/types';
+import { useFullscreen } from '@/contexts/FullscreenContext';
 
 const CodeBlock = ({ language, children, ...props }: any) => {
   const [isCopied, setIsCopied] = useState(false);
@@ -364,6 +365,7 @@ export const ChatInterface = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCacheRef = useRef<Map<string, string>>(new Map());
+  const { isFullscreen } = useFullscreen();
   const welcomeRepositoryName = repositoryName || 'este repositório';
   const welcomeRepositoryDescription = repositoryDescription || 'Sem descrição disponível no repositório.';
 
@@ -447,7 +449,7 @@ export const ChatInterface = ({
     <div
       className={cn(
         'flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden transition-all duration-300',
-        isMaximized ? 'h-[96%]' : 'h-[96%]'
+        isFullscreen ? 'h-full' : (isMaximized ? 'h-[96%]' : 'h-[96%]')
       )}
     >
       {/* Header */}
