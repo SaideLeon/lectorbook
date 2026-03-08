@@ -34,8 +34,9 @@ export async function POST(req: NextRequest) {
       7) Riscos, dificuldades previstas e mitigação
       8) Considerações sobre documentos em formato .md e .txt no GitHub, com foco em explicação para alunos
       9) Texto direto ao ponto: sem saudações, sem apresentação pessoal e sem explicação da função do assistente
+      10) Estruture o conteúdo para exportação em PDF de alta qualidade, usando tabelas quando fizer sentido para organizar dados
 
-      IMPORTANTE: responda em Português (pt-BR) e em Markdown.
+      IMPORTANTE: responda em Português (pt-BR) e em Markdown estruturado.
     `;
 
     try {
