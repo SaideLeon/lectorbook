@@ -3,6 +3,7 @@ import { AnalysisMessage } from '@/types';
 import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
+import { generateStyledPdfFromMarkdown } from '@/utils/pdf-generator';
 
 export function useAIChat() {
   const [chatHistory, setChatHistory] = useState<AnalysisMessage[]>([]);
@@ -205,11 +206,12 @@ export function useAIChat() {
         throw new Error('A resposta da IA veio vazia.');
       }
       
-      const blob = new Blob([readingSheetText], { type: 'text/markdown' });
+      const safeRepoName = repoName.replace(/[^a-zA-Z0-9-_]+/g, '-');
+      const blob = generateStyledPdfFromMarkdown(readingSheetText, `Ficha de Leitura — ${repoName}`);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ficha-de-leitura-${repoName}.md`;
+      a.download = `ficha-de-leitura-${safeRepoName}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
