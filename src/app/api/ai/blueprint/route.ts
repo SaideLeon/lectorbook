@@ -9,6 +9,11 @@ export async function POST(req: NextRequest) {
     const { contextFiles, context, apiKey } = await req.json();
     const ai = getAIClient(apiKey);
     const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
+    const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
+      dateStyle: 'full',
+      timeStyle: 'long',
+      timeZone: 'Africa/Maputo',
+    }).format(new Date());
 
     const prompt = `
       Você é o Tutor de Leitura principal chamado "Lector".
@@ -17,6 +22,7 @@ export async function POST(req: NextRequest) {
       Vá direto ao conteúdo solicitado, sem apresentações ou introduções sobre quem você é.
 
       Gere um PLANO DE ESTUDO E EXECUÇÃO detalhado com base no contexto e materiais.
+      Referência temporal obrigatória: a hora atual exata em Moçambique (Africa/Maputo) é ${nowInMozambique}.
 
       Contexto de entrada:
       ${context}
@@ -35,6 +41,7 @@ export async function POST(req: NextRequest) {
       8) Considerações sobre documentos em formato .md e .txt no GitHub, com foco em explicação para alunos
       9) Texto direto ao ponto: sem saudações, sem apresentação pessoal e sem explicação da função do assistente
       10) Estruture o conteúdo para exportação em PDF de alta qualidade, usando tabelas quando fizer sentido para organizar dados
+      11) Em qualquer menção de prazo, agenda, data e hora, use explicitamente o fuso horário de Moçambique (Africa/Maputo)
 
       IMPORTANTE: responda em Português (pt-BR) e em Markdown estruturado.
     `;
