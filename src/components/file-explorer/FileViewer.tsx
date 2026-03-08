@@ -5,6 +5,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
+import { useFullscreen } from '@/contexts/FullscreenContext';
 
 export const FileViewer = ({ 
   file, 
@@ -29,6 +30,7 @@ export const FileViewer = ({
   const isMarkdownFile = extension === 'md';
   const isTextFile = extension === 'txt';
   const [isCopied, setIsCopied] = useState(false);
+  const { isFullscreen } = useFullscreen();
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(file.content);
@@ -39,7 +41,7 @@ export const FileViewer = ({
   return (
     <div className={cn(
       'flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden relative transition-all duration-300', 
-      isMaximized ? 'h-[82%]' : 'h-[80%]'
+      isFullscreen ? 'h-full' : (isMaximized ? 'h-[82%]' : 'h-[80%]')
     )}>
       <div className="p-3 md:p-4 border-b border-white/10 bg-[#151515] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">

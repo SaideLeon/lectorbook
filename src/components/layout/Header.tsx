@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Settings, Upload, Key, Maximize, Minimize } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { LectorLogo } from '@/components/layout/LectorLogo';
+import { useFullscreen } from '@/contexts/FullscreenContext';
 
 interface HeaderProps {
   apiKeys: string[];
@@ -12,30 +13,9 @@ interface HeaderProps {
 
 export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }: HeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else if (document.exitFullscreen) {
-        await document.exitFullscreen();
-      }
-    } catch (err) {
-      console.error('Erro ao alternar tela cheia:', err);
-    }
-  };
+  const { isFullscreen, toggleFullscreen } = useFullscreen();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
