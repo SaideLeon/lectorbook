@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AnalysisMessage } from '@/types';
 import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
 import { generateStyledPdfFromMarkdown } from '@/utils/pdf-generator';
+import { loadGeminiApiKeys, saveGeminiApiKeys } from '@/utils/indexeddb';
 
 export function useAIChat() {
   const [chatHistory, setChatHistory] = useState<AnalysisMessage[]>([]);
@@ -15,10 +16,46 @@ export function useAIChat() {
   
   const [apiKeys, setApiKeys] = useState<string[]>([]);
   const [keyIndex, setKeyIndex] = useState(0);
+  const [keysHydrated, setKeysHydrated] = useState(false);
 
   const appendLog = useCallback((log: string) => {
     setProcessLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('pt-BR')}] ${log}`]);
   }, []);
+
+
+  useEffect(() => {
+    let mounted = true;
+
+    const restoreKeys = async () => {
+      try {
+        const storedKeys = await loadGeminiApiKeys();
+        if (!mounted) return;
+
+        if (storedKeys.length > 0) {
+          setApiKeys(storedKeys);
+          setKeyIndex(0);
+        }
+      } catch (error) {
+        console.error('Falha ao restaurar chaves Gemini do IndexedDB:', error);
+      } finally {
+        if (mounted) setKeysHydrated(true);
+      }
+    };
+
+    restoreKeys();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!keysHydrated) return;
+
+    saveGeminiApiKeys(apiKeys).catch((error) => {
+      console.error('Falha ao persistir chaves Gemini no IndexedDB:', error);
+    });
+  }, [apiKeys, keysHydrated]);
 
   const getNextKey = useCallback(() => {
     if (apiKeys.length > 0) {

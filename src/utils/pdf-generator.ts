@@ -22,7 +22,6 @@ const WIN_ANSI_MAP: Record<string, number> = {
   '‚': 130,
   'ƒ': 131,
   '„': 132,
-  '…': 133,
   '†': 134,
   '‡': 135,
   'ˆ': 136,
@@ -120,8 +119,8 @@ function stripInlineMarkdown(text: string): string {
     .replace(/___(.+?)___/g, '$1')
     .replace(/\*\*(.+?)\*\*/g, '$1')       // **bold**
     .replace(/__(.+?)__/g, '$1')            // __bold__
-    .replace(/\*(.+?)\*/g, '$1')            // *italic*
-    .replace(/_(.+?)_/g, '$1')              // _italic_
+    .replace(/(^|\W)\*(\S(?:.*?\S)?)\*(?=\W|$)/g, '$1$2') // *italic*
+    .replace(/(^|\W)_(\S(?:.*?\S)?)_(?=\W|$)/g, '$1$2')     // _italic_
     .replace(/~~(.+?)~~/g, '$1')            // ~~strikethrough~~
     .replace(/`([^`]+)`/g, '$1');           // `inline code`
 }
@@ -386,6 +385,8 @@ function parseMarkdown(markdown: string): Array<{ type: string; text?: string; r
  * a um encoding ASCII simples e evita qualquer ambiguidade de encoding.
  */
 function buildPdf(pages: string[]): Uint8Array {
+  const encoder = new TextEncoder();
+  const byteLength = (value: string) => encoder.encode(value).length;
   const objects: string[] = [];
 
   objects.push('<< /Type /Catalog /Pages 2 0 R >>');
@@ -415,13 +416,16 @@ function buildPdf(pages: string[]): Uint8Array {
   // Montar o PDF como string ASCII pura
   let pdf = '%PDF-1.4\n';
   const offsets: number[] = [0];
+  let byteOffset = byteLength(pdf);
 
   for (let i = 0; i < objects.length; i++) {
-    offsets.push(pdf.length);
-    pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+    offsets.push(byteOffset);
+    const objectChunk = `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+    pdf += objectChunk;
+    byteOffset += byteLength(objectChunk);
   }
 
-  const xrefStart = pdf.length;
+  const xrefStart = byteOffset;
   pdf += `xref\n0 ${objects.length + 1}\n`;
   pdf += '0000000000 65535 f \n';
   for (let i = 1; i < offsets.length; i++) {
@@ -431,7 +435,7 @@ function buildPdf(pages: string[]): Uint8Array {
 
   // Usar TextEncoder (UTF-8) — para string ASCII pura o resultado é idêntico
   // a Latin-1 e evita qualquer problema de encoding de arquivo
-  return new TextEncoder().encode(pdf);
+  return encoder.encode(pdf);
 }
 
 export function generateStyledPdfFromMarkdown(markdown: string, title: string): Blob {
@@ -475,5 +479,6 @@ export function generateStyledPdfFromMarkdown(markdown: string, title: string): 
   if (state.current.length > 0) state.pages.push(state.current.join('\n'));
 
   const bytes = buildPdf(state.pages.length ? state.pages : ['']);
-  return new Blob([bytes], { type: 'application/pdf' });
+  const blobBytes = new Uint8Array(bytes);
+  return new Blob([blobBytes], { type: 'application/pdf' });
 }
