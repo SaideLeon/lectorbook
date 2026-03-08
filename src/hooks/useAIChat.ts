@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnalysisMessage } from '@/types';
-import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService, transcribeAudio, synthesizeTextToSpeech, sendLiveVoiceTurn } from '@/services/ai';
+import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService, transcribeAudio, synthesizeTextToSpeech } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
 import { generateStyledPdfFromMarkdown } from '@/utils/pdf-generator';
@@ -16,7 +16,6 @@ export function useAIChat() {
   const [isGeneratingReadingSheet, setIsGeneratingReadingSheet] = useState(false);
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
   const [isSynthesizingAudio, setIsSynthesizingAudio] = useState(false);
-  const [isLiveModeActive, setIsLiveModeActive] = useState(false);
   const [processLogs, setProcessLogs] = useState<string[]>([]);
   const chatErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -299,59 +298,7 @@ export function useAIChat() {
   }, [getNextKey]);
 
 
-  const sendLiveVoiceMessage = useCallback(async (msg: string, contextFiles: { path: string; content: string }[] = []) => {
-    const userTimestamp = Date.now();
-    const modelTimestamp = userTimestamp + 1;
 
-    const nextHistory = [...chatHistory, { role: 'user', content: msg, timestamp: userTimestamp } as AnalysisMessage];
-    setChatHistory([...nextHistory, { role: 'model', content: '', timestamp: modelTimestamp } as AnalysisMessage]);
-    setIsLiveModeActive(true);
-
-    try {
-      const activeKey = getNextKey();
-      const limitedContextFiles = contextFiles.map((file) => ({
-        path: file.path,
-        content: limitTextContext(file.content),
-      }));
-
-      const response = await sendLiveVoiceTurn(
-        nextHistory.map((item) => ({ role: item.role, content: item.content })),
-        msg,
-        analysis || 'Nenhum contexto disponível.',
-        limitedContextFiles,
-        activeKey
-      );
-
-      setChatHistory((prev) => {
-        const updated = [...prev];
-        const targetIndex = updated.findIndex((item) => item.timestamp === modelTimestamp && item.role === 'model');
-        if (targetIndex !== -1) {
-          updated[targetIndex] = {
-            ...updated[targetIndex],
-            content: response.text,
-          };
-        }
-        return updated;
-      });
-
-      return { audioBase64: response.audioBase64, mimeType: response.mimeType };
-    } catch (error) {
-      setChatHistory((prev) => {
-        const updated = [...prev];
-        const targetIndex = updated.findIndex((item) => item.timestamp === modelTimestamp && item.role === 'model');
-        if (targetIndex !== -1) {
-          updated[targetIndex] = {
-            ...updated[targetIndex],
-            content: `Erro: ${error instanceof Error ? error.message : 'Falha na conversa ao vivo.'}`,
-          };
-        }
-        return updated;
-      });
-      throw error;
-    } finally {
-      setIsLiveModeActive(false);
-    }
-  }, [analysis, chatHistory, getNextKey]);
 
   return {
     chatHistory,
@@ -361,13 +308,11 @@ export function useAIChat() {
     isGeneratingReadingSheet,
     isTranscribingAudio,
     isSynthesizingAudio,
-    isLiveModeActive,
     processLogs,
     performInitialAnalysis,
     sendMessage,
     transcribeAudioMessage,
     synthesizeMessageAudio,
-    sendLiveVoiceMessage,
     generateReadingSheet,
     setChatHistory,
     apiKeys,
