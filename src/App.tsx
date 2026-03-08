@@ -50,9 +50,15 @@ export default function App() {
     isWaitingForFirstChunk,
     analysis,
     isGeneratingReadingSheet,
+    isTranscribingAudio,
+    isSynthesizingAudio,
+    isLiveModeActive,
     processLogs,
     performInitialAnalysis,
     sendMessage,
+    transcribeAudioMessage,
+    synthesizeMessageAudio,
+    sendLiveVoiceMessage,
     generateReadingSheet,
     apiKeys,
     keyIndex,
@@ -68,6 +74,13 @@ export default function App() {
       setActiveMobileTab('preview');
     }
   }, [selectedFile, maximizedPanel]);
+
+
+  useEffect(() => {
+    if (!repoError) return;
+    const timer = setTimeout(() => setRepoError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [repoError, setRepoError]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -239,8 +252,12 @@ export default function App() {
                 maximizedPanel === 'file' ? "hidden" : (activeMobileTab !== 'chat' ? "hidden lg:flex" : "flex")
               )}>
                 {repoError && (
-                  <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs">
-                    Erro: {repoError}
+                  <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-xl text-xs relative overflow-hidden">
+                    <span>Erro: {repoError}</span>
+                    <div
+                      className="absolute bottom-0 left-0 h-0.5 bg-red-500/50 animate-[shrink_5s_linear_forwards]"
+                      style={{ width: '100%' }}
+                    />
                   </div>
                 )}
                 
@@ -254,6 +271,12 @@ export default function App() {
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
                   repositoryName={repositoryName}
                   repositoryDescription={repoDescription}
+                  onTranscribeAudio={transcribeAudioMessage}
+                  isTranscribingAudio={isTranscribingAudio}
+                  onSynthesizeAudio={synthesizeMessageAudio}
+                  isSynthesizingAudio={isSynthesizingAudio}
+                  onSendLiveVoiceMessage={(msg) => sendLiveVoiceMessage(msg, teachingDocs)}
+                  isLiveModeActive={isLiveModeActive}
                 />
               </div>
 

@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { AppError, jsonError } from '@/app/api/_utils';
+
+export const runtime = 'nodejs';
+
+const groqApiKey = process.env.GROQ_API_KEY;
+
+export async function POST(req: NextRequest) {
+  try {
+    if (!groqApiKey) {
+      throw new AppError('GROQ_API_KEY não configurada no ambiente.', 500);
+    }
+
+    const formData = await req.formData();
+    const audio = formData.get('audio');
+
+    if (!(audio instanceof File)) {
+      throw new AppError('Arquivo de áudio inválido.', 400);
+    }
+
+    const payload = new FormData();
+    payload.append('file', audio, audio.name || 'audio.webm');
+    payload.append('model', 'whisper-large-v3-turbo');
+    payload.append('temperature', '0');
+    payload.append('response_format', 'verbose_json');
+
+    const transcriptionResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${groqApiKey}`,
+      },
+      body: payload,
+    });
+
+    if (!transcriptionResponse.ok) {
+      const errorBody = await transcriptionResponse.text();
+      throw new AppError(`Falha ao transcrever áudio no Groq: ${errorBody || transcriptionResponse.statusText}`, transcriptionResponse.status);
+    }
+
+    const transcription = await transcriptionResponse.json() as { text?: string };
+    return NextResponse.json({ text: transcription.text || '' });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
