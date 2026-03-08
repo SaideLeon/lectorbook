@@ -1,10 +1,12 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnalysisMessage } from '@/types';
 import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService, transcribeAudio, synthesizeTextToSpeech, sendLiveVoiceTurn } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
 import { generateStyledPdfFromMarkdown } from '@/utils/pdf-generator';
 import { loadGeminiApiKeys, saveGeminiApiKeys } from '@/utils/indexeddb';
+
+const ERROR_DISPLAY_MS = 8000;
 
 export function useAIChat() {
   const [chatHistory, setChatHistory] = useState<AnalysisMessage[]>([]);
@@ -16,6 +18,7 @@ export function useAIChat() {
   const [isSynthesizingAudio, setIsSynthesizingAudio] = useState(false);
   const [isLiveModeActive, setIsLiveModeActive] = useState(false);
   const [processLogs, setProcessLogs] = useState<string[]>([]);
+  const chatErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [apiKeys, setApiKeys] = useState<string[]>([]);
   const [keyIndex, setKeyIndex] = useState(0);
@@ -23,6 +26,10 @@ export function useAIChat() {
 
   const appendLog = useCallback((log: string) => {
     setProcessLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('pt-BR')}] ${log}`]);
+  }, []);
+
+  useEffect(() => () => {
+    if (chatErrorTimerRef.current) clearTimeout(chatErrorTimerRef.current);
   }, []);
 
 
@@ -222,6 +229,13 @@ export function useAIChat() {
           timestamp: Date.now()
         }];
       });
+
+      if (chatErrorTimerRef.current) clearTimeout(chatErrorTimerRef.current);
+      chatErrorTimerRef.current = setTimeout(() => {
+        setChatHistory((prev) =>
+          prev.filter((m) => !(m.role === 'model' && m.content.startsWith('Erro:')))
+        );
+      }, ERROR_DISPLAY_MS);
     } finally {
       setIsThinking(false);
       setIsWaitingForFirstChunk(false);

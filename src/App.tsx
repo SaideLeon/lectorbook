@@ -77,12 +77,6 @@ export default function App() {
 
 
   useEffect(() => {
-    if (!repoError) return;
-    const timer = setTimeout(() => setRepoError(null), 5000);
-    return () => clearTimeout(timer);
-  }, [repoError, setRepoError]);
-
-  useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
     const registerServiceWorker = async () => {
