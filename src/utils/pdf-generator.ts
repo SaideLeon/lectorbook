@@ -13,6 +13,57 @@ type RenderState = {
   cursorY: number;
 };
 
+const WIN_ANSI_MAP: Record<string, number> = {
+  '€': 128,
+  '‚': 130,
+  'ƒ': 131,
+  '„': 132,
+  '…': 133,
+  '†': 134,
+  '‡': 135,
+  'ˆ': 136,
+  '‰': 137,
+  'Š': 138,
+  '‹': 139,
+  'Œ': 140,
+  'Ž': 142,
+  '‘': 145,
+  '’': 146,
+  '“': 147,
+  '”': 148,
+  '•': 149,
+  '–': 150,
+  '—': 151,
+  '˜': 152,
+  '™': 153,
+  'š': 154,
+  '›': 155,
+  'œ': 156,
+  'ž': 158,
+  'Ÿ': 159,
+};
+
+function encodeWinAnsi(input: string): Uint8Array {
+  const bytes: number[] = [];
+
+  for (const char of input) {
+    const mapped = WIN_ANSI_MAP[char];
+    if (typeof mapped === 'number') {
+      bytes.push(mapped);
+      continue;
+    }
+
+    const code = char.charCodeAt(0);
+    if (code <= 255) {
+      bytes.push(code);
+    } else {
+      bytes.push(63);
+    }
+  }
+
+  return new Uint8Array(bytes);
+}
+
 function escapePdfText(input: string): string {
   return input.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
@@ -218,9 +269,9 @@ function buildPdf(pages: string[]): Uint8Array {
   const kids = Array.from({ length: pageCount }, (_, idx) => `${firstPageObj + idx * 2} 0 R`).join(' ');
   objects.push(`<< /Type /Pages /Kids [${kids}] /Count ${pageCount} >>`);
 
-  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
-  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>');
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>');
 
   pages.forEach((stream, idx) => {
     const pageObjNumber = firstPageObj + idx * 2;
@@ -247,7 +298,7 @@ function buildPdf(pages: string[]): Uint8Array {
 
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
 
-  return new TextEncoder().encode(pdf);
+  return encodeWinAnsi(pdf);
 }
 
 export function generateStyledPdfFromMarkdown(markdown: string, title: string): Blob {
@@ -293,6 +344,7 @@ export function generateStyledPdfFromMarkdown(markdown: string, title: string): 
 
   if (state.current.length > 0) state.pages.push(state.current.join('\n'));
   const bytes = buildPdf(state.pages.length ? state.pages : ['']);
-  const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  return new Blob([arrayBuffer], { type: 'application/pdf' });
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new Blob([copy.buffer], { type: 'application/pdf' });
 }
