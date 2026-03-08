@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause, Radio } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -66,16 +66,118 @@ function ChatInput({
   setInput,
   onSend,
   disabled,
+  onTranscribeAudio,
+  isTranscribingAudio,
+  onSendLiveVoiceMessage,
+  isLiveModeActive,
 }: {
   input: string;
-  setInput: (v: string) => void;
+  setInput: Dispatch<SetStateAction<string>>;
   onSend: () => void;
   disabled: boolean;
+  onTranscribeAudio: (file: File) => Promise<string>;
+  isTranscribingAudio: boolean;
+  onSendLiveVoiceMessage: (message: string) => Promise<{ audioBase64: string; mimeType: string }>;
+  isLiveModeActive: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingRecording, setIsProcessingRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const liveAudioRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useAutoResize(input, isExpanded);
 
   // When collapsing, re-trigger auto-resize
+
+
+  useEffect(() => {
+    return () => {
+      liveAudioRef.current?.pause();
+    };
+  }, []);
+
+  const handleStopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+  }, []);
+
+  const handleToggleRecording = useCallback(async () => {
+    if (isRecording) {
+      handleStopRecording();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const ext = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
+        const audioFile = new File([audioBlob], `recording.${ext}`, { type: audioBlob.type || 'audio/webm' });
+
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecording(false);
+        setIsProcessingRecording(true);
+
+        try {
+          const text = await onTranscribeAudio(audioFile);
+          if (text.trim()) {
+            setInput((prev) => (prev ? `${prev} ${text}` : text));
+          }
+        } catch (error) {
+          console.error('Falha ao transcrever áudio:', error);
+        } finally {
+          setIsProcessingRecording(false);
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Falha ao iniciar gravação de áudio:', error);
+    }
+  }, [handleStopRecording, isRecording, onTranscribeAudio, setInput]);
+
+
+
+  const handleLiveVoiceTurn = useCallback(async () => {
+    if (!input.trim() || disabled || isLiveModeActive) return;
+
+    try {
+      const { audioBase64, mimeType } = await onSendLiveVoiceMessage(input.trim());
+      setInput('');
+
+      const binary = atob(audioBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      const audioBlob = new Blob([bytes], { type: mimeType || 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      liveAudioRef.current?.pause();
+      const audio = new Audio(audioUrl);
+      liveAudioRef.current = audio;
+
+      audio.onended = () => URL.revokeObjectURL(audioUrl);
+      audio.onerror = () => URL.revokeObjectURL(audioUrl);
+
+      await audio.play();
+    } catch (error) {
+      console.error('Falha na conversa ao vivo:', error);
+    }
+  }, [disabled, input, isLiveModeActive, onSendLiveVoiceMessage, setInput]);
+
   const toggleExpand = () => {
     setIsExpanded((prev) => {
       if (prev) {
@@ -156,6 +258,43 @@ function ChatInput({
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={handleToggleRecording}
+            disabled={disabled || isTranscribingAudio || isProcessingRecording}
+            className={cn(
+              'p-1.5 rounded-lg transition-all duration-200',
+              isRecording
+                ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white',
+              (disabled || isTranscribingAudio || isProcessingRecording) && 'opacity-60 cursor-not-allowed'
+            )}
+            title={isRecording ? 'Parar gravação' : 'Gravar áudio'}
+          >
+            {isTranscribingAudio || isProcessingRecording ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isRecording ? (
+              <Square className="w-4 h-4" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleLiveVoiceTurn}
+            disabled={!input.trim() || disabled || isLiveModeActive}
+            className={cn(
+              'p-1.5 rounded-lg transition-all duration-200',
+              input.trim() && !disabled && !isLiveModeActive
+                ? 'bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200'
+                : 'bg-white/5 text-gray-600 cursor-not-allowed'
+            )}
+            title="Conversa ao vivo"
+          >
+            {isLiveModeActive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
+          </button>
+
           {/* Send button */}
           <button
             type="button"
@@ -196,6 +335,12 @@ export const ChatInterface = ({
   onToggleMaximize,
   repositoryName,
   repositoryDescription,
+  onTranscribeAudio,
+  isTranscribingAudio = false,
+  onSynthesizeAudio,
+  isSynthesizingAudio = false,
+  onSendLiveVoiceMessage,
+  isLiveModeActive = false,
 }: {
   messages: AnalysisMessage[];
   onSendMessage: (msg: string) => void;
@@ -206,10 +351,19 @@ export const ChatInterface = ({
   onToggleMaximize: () => void;
   repositoryName?: string;
   repositoryDescription?: string | null;
+  onTranscribeAudio: (file: File) => Promise<string>;
+  isTranscribingAudio?: boolean;
+  onSynthesizeAudio: (text: string) => Promise<{ audioBase64: string; mimeType: string }>;
+  isSynthesizingAudio?: boolean;
+  onSendLiveVoiceMessage: (message: string) => Promise<{ audioBase64: string; mimeType: string }>;
+  isLiveModeActive?: boolean;
 }) => {
   const [input, setInput] = useState('');
   const [copiedMessageKey, setCopiedMessageKey] = useState<string | null>(null);
+  const [speakingMessageKey, setSpeakingMessageKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCacheRef = useRef<Map<string, string>>(new Map());
   const welcomeRepositoryName = repositoryName || 'este repositório';
   const welcomeRepositoryDescription = repositoryDescription || 'Sem descrição disponível no repositório.';
 
@@ -225,6 +379,57 @@ export const ChatInterface = ({
       setInput('');
     }
   }, [input, onSendMessage]);
+
+
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      for (const url of audioCacheRef.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      audioCacheRef.current.clear();
+    };
+  }, []);
+
+  const handleSpeakMessage = useCallback(async (content: string, key: string) => {
+    if (!content?.trim()) return;
+
+    if (speakingMessageKey === key) {
+      audioRef.current?.pause();
+      setSpeakingMessageKey(null);
+      return;
+    }
+
+    try {
+      let audioUrl = audioCacheRef.current.get(key);
+
+      if (!audioUrl) {
+        const { audioBase64, mimeType } = await onSynthesizeAudio(content);
+        const binary = atob(audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType || 'audio/wav' });
+        audioUrl = URL.createObjectURL(blob);
+        audioCacheRef.current.set(key, audioUrl);
+      }
+
+      audioRef.current?.pause();
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      setSpeakingMessageKey(key);
+
+      audio.onended = () => setSpeakingMessageKey((prev) => (prev === key ? null : prev));
+      audio.onerror = () => setSpeakingMessageKey((prev) => (prev === key ? null : prev));
+
+      await audio.play();
+    } catch (error) {
+      console.error('Falha ao sintetizar áudio da resposta:', error);
+      setSpeakingMessageKey(null);
+    }
+  }, [onSynthesizeAudio, speakingMessageKey]);
 
   const handleCopyMessage = useCallback(async (content: string, key: string) => {
     if (!content?.trim()) return;
@@ -331,7 +536,25 @@ export const ChatInterface = ({
               )}
             >
               {msg.role === 'model' && (
-                <div className="mb-3 flex justify-end">
+                <div className="mb-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSpeakMessage(msg.content, messageKey)}
+                    disabled={isSynthesizingAudio && speakingMessageKey !== messageKey}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300 hover:text-white transition-colors disabled:opacity-60"
+                    title={speakingMessageKey === messageKey ? 'Parar áudio' : 'Ouvir resposta'}
+                    aria-label={speakingMessageKey === messageKey ? 'Parar áudio da resposta da IA' : 'Ouvir resposta da IA'}
+                  >
+                    {(isSynthesizingAudio && speakingMessageKey !== messageKey) ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : speakingMessageKey === messageKey ? (
+                      <Pause className="w-3.5 h-3.5" />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" />
+                    )}
+                    Áudio
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleCopyMessage(msg.content, messageKey)}
@@ -429,6 +652,10 @@ export const ChatInterface = ({
           setInput={setInput}
           onSend={handleSend}
           disabled={isThinking}
+          onTranscribeAudio={onTranscribeAudio}
+          isTranscribingAudio={isTranscribingAudio}
+          onSendLiveVoiceMessage={onSendLiveVoiceMessage}
+          isLiveModeActive={isLiveModeActive}
         />
       </div>
     </div>
