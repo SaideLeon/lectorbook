@@ -52,13 +52,11 @@ export default function App() {
     isGeneratingReadingSheet,
     isTranscribingAudio,
     isSynthesizingAudio,
-    isLiveModeActive,
     processLogs,
     performInitialAnalysis,
     sendMessage,
     transcribeAudioMessage,
     synthesizeMessageAudio,
-    sendLiveVoiceMessage,
     generateReadingSheet,
     apiKeys,
     keyIndex,
@@ -75,12 +73,6 @@ export default function App() {
     }
   }, [selectedFile, maximizedPanel]);
 
-
-  useEffect(() => {
-    if (!repoError) return;
-    const timer = setTimeout(() => setRepoError(null), 5000);
-    return () => clearTimeout(timer);
-  }, [repoError, setRepoError]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -275,8 +267,6 @@ export default function App() {
                   isTranscribingAudio={isTranscribingAudio}
                   onSynthesizeAudio={synthesizeMessageAudio}
                   isSynthesizingAudio={isSynthesizingAudio}
-                  onSendLiveVoiceMessage={(msg) => sendLiveVoiceMessage(msg, teachingDocs)}
-                  isLiveModeActive={isLiveModeActive}
                 />
               </div>
 

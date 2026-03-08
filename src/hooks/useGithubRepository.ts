@@ -1,4 +1,4 @@
-import { useState, useCallback, startTransition } from 'react';
+import { useState, useCallback, startTransition, useRef, useEffect } from 'react';
 import { FileNode } from '@/types';
 import { githubApi } from '@/services/github.api';
 
@@ -11,13 +11,28 @@ export function useGithubRepository() {
   const [branch, setBranch] = useState<string>('main');
   const [repoDescription, setRepoDescription] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorRaw] = useState<string | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
   const [teachingDocs, setTeachingDocs] = useState<{ path: string, content: string }[]>([]);
   
   // History
   const [fileHistory, setFileHistory] = useState<{ path: string, content: string }[]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+
+  const setError = useCallback((msg: string | null, duration = 5000) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+
+    setErrorRaw(msg);
+
+    if (msg && duration > 0) {
+      errorTimerRef.current = setTimeout(() => setErrorRaw(null), duration);
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+  }, []);
 
   const analyzeRepository = useCallback(async (url: string, performAnalysis: (files: { path: string, content: string }[]) => Promise<string>) => {
     setIsLoading(true);
