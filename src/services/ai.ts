@@ -89,6 +89,58 @@ export async function generateReadingSheet(
   return response.json();
 }
 
+export async function transcribeAudio(file: File) {
+  const formData = new FormData();
+  formData.append('audio', file);
+
+  const response = await fetch('/api/ai/transcribe', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorMessage = response.statusText;
+    try {
+      const errorBody = await response.json();
+      if (errorBody.error) {
+        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+
+    throw new Error(`Falha na transcrição de áudio: ${errorMessage}`);
+  }
+
+  const data = await response.json();
+  return data.text as string;
+}
+
+
+export async function synthesizeTextToSpeech(text: string, apiKey?: string) {
+  const response = await fetch('/api/ai/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, apiKey }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = response.statusText;
+    try {
+      const errorBody = await response.json();
+      if (errorBody.error) {
+        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+
+    throw new Error(`Falha na síntese de áudio: ${errorMessage}`);
+  }
+
+  return response.json() as Promise<{ audioBase64: string; mimeType: string }>;
+}
+
 type StreamEvent =
   | { type: 'chunk'; text: string }
   | { type: 'done'; relatedLinks?: { title: string; url: string }[] }

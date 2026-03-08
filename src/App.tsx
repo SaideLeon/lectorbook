@@ -50,9 +50,13 @@ export default function App() {
     isWaitingForFirstChunk,
     analysis,
     isGeneratingReadingSheet,
+    isTranscribingAudio,
+    isSynthesizingAudio,
     processLogs,
     performInitialAnalysis,
     sendMessage,
+    transcribeAudioMessage,
+    synthesizeMessageAudio,
     generateReadingSheet,
     apiKeys,
     keyIndex,
@@ -254,6 +258,10 @@ export default function App() {
                   onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
                   repositoryName={repositoryName}
                   repositoryDescription={repoDescription}
+                  onTranscribeAudio={transcribeAudioMessage}
+                  isTranscribingAudio={isTranscribingAudio}
+                  onSynthesizeAudio={synthesizeMessageAudio}
+                  isSynthesizingAudio={isSynthesizingAudio}
                 />
               </div>
 

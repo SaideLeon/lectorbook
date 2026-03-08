@@ -9,7 +9,7 @@ A interface permite carregar a árvore de arquivos de um repositório, visualiza
 
 - Analisa repositórios GitHub a partir de URL.
 - Exibe árvore de arquivos e visualização de conteúdo.
-- Permite chat contextual sobre o repositório carregado.
+- Permite chat contextual sobre o repositório carregado, com voz-para-texto e texto-para-voz.
 - Gera ficha de leitura com base na análise.
 - Suporta cache de dados de GitHub no backend para reduzir chamadas repetidas.
 
@@ -35,6 +35,7 @@ Variáveis mais importantes:
 - `GEMINI_API_KEY`: chave para chamadas de IA.
 - `APP_URL`: URL base da aplicação (usada em callbacks e links internos).
 - `GITHUB_TOKEN`: token do GitHub usado **apenas no servidor** para chamadas à API do GitHub.
+- `GROQ_API_KEY`: chave da API Groq para transcrição de áudio (fala-para-texto no chat).
 
 ### Importante sobre o token do GitHub
 
