@@ -51,10 +51,12 @@ export default function App() {
     analysis,
     isGeneratingReadingSheet,
     isTranscribingAudio,
+    isSynthesizingAudio,
     processLogs,
     performInitialAnalysis,
     sendMessage,
     transcribeAudioMessage,
+    synthesizeMessageAudio,
     generateReadingSheet,
     apiKeys,
     keyIndex,
@@ -258,6 +260,8 @@ export default function App() {
                   repositoryDescription={repoDescription}
                   onTranscribeAudio={transcribeAudioMessage}
                   isTranscribingAudio={isTranscribingAudio}
+                  onSynthesizeAudio={synthesizeMessageAudio}
+                  isSynthesizingAudio={isSynthesizingAudio}
                 />
               </div>
 

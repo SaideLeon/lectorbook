@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AnalysisMessage } from '@/types';
-import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService, transcribeAudio } from '@/services/ai';
+import { analyzeCode, thinkAndSuggestStream, generateReadingSheet as generateReadingSheetService, transcribeAudio, synthesizeTextToSpeech } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
 import { generateStyledPdfFromMarkdown } from '@/utils/pdf-generator';
@@ -13,6 +13,7 @@ export function useAIChat() {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isGeneratingReadingSheet, setIsGeneratingReadingSheet] = useState(false);
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
+  const [isSynthesizingAudio, setIsSynthesizingAudio] = useState(false);
   const [processLogs, setProcessLogs] = useState<string[]>([]);
   
   const [apiKeys, setApiKeys] = useState<string[]>([]);
@@ -271,6 +272,17 @@ export function useAIChat() {
     }
   }, []);
 
+
+  const synthesizeMessageAudio = useCallback(async (text: string) => {
+    setIsSynthesizingAudio(true);
+    try {
+      const activeKey = getNextKey();
+      return await synthesizeTextToSpeech(text, activeKey);
+    } finally {
+      setIsSynthesizingAudio(false);
+    }
+  }, [getNextKey]);
+
   return {
     chatHistory,
     isThinking,
@@ -278,10 +290,12 @@ export function useAIChat() {
     analysis,
     isGeneratingReadingSheet,
     isTranscribingAudio,
+    isSynthesizingAudio,
     processLogs,
     performInitialAnalysis,
     sendMessage,
     transcribeAudioMessage,
+    synthesizeMessageAudio,
     generateReadingSheet,
     setChatHistory,
     apiKeys,

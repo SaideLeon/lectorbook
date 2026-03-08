@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square } from 'lucide-react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -280,6 +280,8 @@ export const ChatInterface = ({
   repositoryDescription,
   onTranscribeAudio,
   isTranscribingAudio = false,
+  onSynthesizeAudio,
+  isSynthesizingAudio = false,
 }: {
   messages: AnalysisMessage[];
   onSendMessage: (msg: string) => void;
@@ -292,10 +294,15 @@ export const ChatInterface = ({
   repositoryDescription?: string | null;
   onTranscribeAudio: (file: File) => Promise<string>;
   isTranscribingAudio?: boolean;
+  onSynthesizeAudio: (text: string) => Promise<{ audioBase64: string; mimeType: string }>;
+  isSynthesizingAudio?: boolean;
 }) => {
   const [input, setInput] = useState('');
   const [copiedMessageKey, setCopiedMessageKey] = useState<string | null>(null);
+  const [speakingMessageKey, setSpeakingMessageKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCacheRef = useRef<Map<string, string>>(new Map());
   const welcomeRepositoryName = repositoryName || 'este repositório';
   const welcomeRepositoryDescription = repositoryDescription || 'Sem descrição disponível no repositório.';
 
@@ -311,6 +318,57 @@ export const ChatInterface = ({
       setInput('');
     }
   }, [input, onSendMessage]);
+
+
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      for (const url of audioCacheRef.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      audioCacheRef.current.clear();
+    };
+  }, []);
+
+  const handleSpeakMessage = useCallback(async (content: string, key: string) => {
+    if (!content?.trim()) return;
+
+    if (speakingMessageKey === key) {
+      audioRef.current?.pause();
+      setSpeakingMessageKey(null);
+      return;
+    }
+
+    try {
+      let audioUrl = audioCacheRef.current.get(key);
+
+      if (!audioUrl) {
+        const { audioBase64, mimeType } = await onSynthesizeAudio(content);
+        const binary = atob(audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType || 'audio/wav' });
+        audioUrl = URL.createObjectURL(blob);
+        audioCacheRef.current.set(key, audioUrl);
+      }
+
+      audioRef.current?.pause();
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      setSpeakingMessageKey(key);
+
+      audio.onended = () => setSpeakingMessageKey((prev) => (prev === key ? null : prev));
+      audio.onerror = () => setSpeakingMessageKey((prev) => (prev === key ? null : prev));
+
+      await audio.play();
+    } catch (error) {
+      console.error('Falha ao sintetizar áudio da resposta:', error);
+      setSpeakingMessageKey(null);
+    }
+  }, [onSynthesizeAudio, speakingMessageKey]);
 
   const handleCopyMessage = useCallback(async (content: string, key: string) => {
     if (!content?.trim()) return;
@@ -417,7 +475,25 @@ export const ChatInterface = ({
               )}
             >
               {msg.role === 'model' && (
-                <div className="mb-3 flex justify-end">
+                <div className="mb-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSpeakMessage(msg.content, messageKey)}
+                    disabled={isSynthesizingAudio && speakingMessageKey !== messageKey}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300 hover:text-white transition-colors disabled:opacity-60"
+                    title={speakingMessageKey === messageKey ? 'Parar áudio' : 'Ouvir resposta'}
+                    aria-label={speakingMessageKey === messageKey ? 'Parar áudio da resposta da IA' : 'Ouvir resposta da IA'}
+                  >
+                    {(isSynthesizingAudio && speakingMessageKey !== messageKey) ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : speakingMessageKey === messageKey ? (
+                      <Pause className="w-3.5 h-3.5" />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" />
+                    )}
+                    Áudio
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleCopyMessage(msg.content, messageKey)}

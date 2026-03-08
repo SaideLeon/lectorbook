@@ -9,7 +9,7 @@ A interface permite carregar a árvore de arquivos de um repositório, visualiza
 
 - Analisa repositórios GitHub a partir de URL.
 - Exibe árvore de arquivos e visualização de conteúdo.
-- Permite chat contextual sobre o repositório carregado.
+- Permite chat contextual sobre o repositório carregado, com voz-para-texto e texto-para-voz.
 - Gera ficha de leitura com base na análise.
 - Suporta cache de dados de GitHub no backend para reduzir chamadas repetidas.
 
