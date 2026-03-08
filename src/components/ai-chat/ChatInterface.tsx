@@ -447,7 +447,7 @@ export const ChatInterface = ({
     <div
       className={cn(
         'flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden transition-all duration-300',
-        isMaximized ? 'h-full' : 'h-[96%]'
+        isMaximized ? 'h-[96%]' : 'h-[96%]'
       )}
     >
       {/* Header */}
