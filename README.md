@@ -35,6 +35,7 @@ Variáveis mais importantes:
 - `GEMINI_API_KEY`: chave para chamadas de IA.
 - `APP_URL`: URL base da aplicação (usada em callbacks e links internos).
 - `GITHUB_TOKEN`: token do GitHub usado **apenas no servidor** para chamadas à API do GitHub.
+- `GROQ_API_KEY`: chave da API Groq para transcrição de áudio (fala-para-texto no chat).
 
 ### Importante sobre o token do GitHub
 

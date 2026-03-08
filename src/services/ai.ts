@@ -89,6 +89,33 @@ export async function generateReadingSheet(
   return response.json();
 }
 
+export async function transcribeAudio(file: File) {
+  const formData = new FormData();
+  formData.append('audio', file);
+
+  const response = await fetch('/api/ai/transcribe', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorMessage = response.statusText;
+    try {
+      const errorBody = await response.json();
+      if (errorBody.error) {
+        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+
+    throw new Error(`Falha na transcrição de áudio: ${errorMessage}`);
+  }
+
+  const data = await response.json();
+  return data.text as string;
+}
+
 type StreamEvent =
   | { type: 'chunk'; text: string }
   | { type: 'done'; relatedLinks?: { title: string; url: string }[] }
