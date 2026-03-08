@@ -39,7 +39,7 @@ export const FileViewer = ({
   return (
     <div className={cn(
       'flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden relative transition-all duration-300', 
-      isMaximized ? 'h-[90%]' : 'h-[96%]'
+      isMaximized ? 'h-[88%]' : 'h-[96%]'
     )}>
       <div className="p-3 md:p-4 border-b border-white/10 bg-[#151515] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
