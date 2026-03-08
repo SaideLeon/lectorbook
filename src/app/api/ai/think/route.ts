@@ -22,6 +22,12 @@ export async function POST(req: NextRequest) {
       .map((f: any) => `--- ${f.path} ---\n${f.content}\n`)
       .join('\n');
 
+    const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
+      dateStyle: 'full',
+      timeStyle: 'long',
+      timeZone: 'Africa/Maputo',
+    }).format(new Date());
+
     const systemInstruction = `
       Você é o Tutor de Leitura principal chamado "Lector".
       Seu papel é explicar conteúdos com clareza para o aluno entender, e não atuar como analista.
@@ -37,6 +43,9 @@ export async function POST(req: NextRequest) {
       6. Nunca comece com frases de apresentação, saudação ou explicação do seu papel; inicie diretamente pela explicação do módulo/conteúdo.
 
       IMPORTANTE: responda sempre em Português (pt-BR), com tom de docente explicador.
+      Referência temporal obrigatória: a hora atual exata em Moçambique (Africa/Maputo) é ${nowInMozambique}.
+      Sempre que houver pedido envolvendo tempo, datas, horas, agendas, prazos, 
+ou "agora", responda usando explicitamente o horário de Moçambique.
     `;
 
     const contents = [

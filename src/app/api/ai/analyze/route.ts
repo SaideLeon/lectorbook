@@ -9,12 +9,21 @@ export async function POST(req: NextRequest) {
     const { prompt, contextFiles, apiKey } = await req.json();
     const ai = getAIClient(apiKey);
     const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
+    const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
+      dateStyle: 'full',
+      timeStyle: 'long',
+      timeZone: 'Africa/Maputo',
+    }).format(new Date());
 
     const fullPrompt = `
       Você é o Tutor de Leitura principal chamado "Lector".
       Não atue como analista: atue como docente explicador.
       Especialidades: contabilidade, inglês, direito e economia.
       Vá direto ao conteúdo solicitado, sem apresentações ou introduções sobre quem você é.
+
+      Referência temporal obrigatória: a hora atual exata em Moçambique (Africa/Maputo) é ${nowInMozambique}.
+      Quando houver perguntas de tempo, cronograma, prazo, 
+datas, duração ou "agora", use esta referência de Moçambique explicitamente.
 
       Aqui está o conteúdo de um repositório GitHub:
       ${fileContext}
