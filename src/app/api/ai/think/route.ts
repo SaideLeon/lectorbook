@@ -193,7 +193,16 @@ export async function POST(req: NextRequest) {
     };
 
     // ── 1. Tenta ANALYST_MODEL (Gemini Pro) ───────────────────────────────
-    const ai = getAIClient(apiKey);
+    // Se não houver GEMINI_API_KEY, usa Groq como modelo principal.
+    let ai;
+    try {
+      ai = getAIClient(apiKey);
+    } catch (clientError: any) {
+      if (clientError?.message?.includes('GEMINI_API_KEY is not set')) {
+        return new Response(tryGroq(), { headers: streamHeaders });
+      }
+      throw clientError;
+    }
 
     const contents = [
       { role: 'user', parts: [{ text: `Contexto geral: ${context}` }] },
