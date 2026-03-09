@@ -34,7 +34,16 @@ export function useGithubRepository() {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
   }, []);
 
-  const analyzeRepository = useCallback(async (url: string, performAnalysis: (files: { path: string, content: string }[]) => Promise<string>) => {
+  const parseRepoInfo = useCallback((url: string) => {
+    const cleanUrl = url.replace(/\.git\/?$/, '').replace(/\/$/, '');
+    const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (!match) throw new Error('URL do GitHub inválida. Use o formato: https://github.com/usuario/repo');
+
+    const [, owner, repo] = match;
+    return { cleanUrl, owner, repo };
+  }, []);
+
+  const analyzeRepository = useCallback(async (url: string) => {
     setIsLoading(true);
     setError(null);
     setRepoUrl(url);
@@ -42,10 +51,7 @@ export function useGithubRepository() {
     setRepoDescription(null);
     
     try {
-      const cleanUrl = url.replace(/\.git\/?$/, '').replace(/\/$/, '');
-      const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
-      if (!match) throw new Error('URL do GitHub inválida. Use o formato: https://github.com/usuario/repo');
-      const [, owner, repo] = match;
+      const { owner, repo } = parseRepoInfo(url);
 
       const treeData = await githubApi.getTree(owner, repo);
       const allNodes = treeData.tree;
@@ -58,37 +64,6 @@ export function useGithubRepository() {
       setBranch(currentBranch);
       setRepoDescription(treeData.description || null);
       
-      // Inicial: mantém análise rápida com arquivos prioritários de código/configuração
-      const priorityFiles = allNodes.filter((f) => 
-        f.type === 'blob' && f.path.match(/(README|package\.json|tsconfig\.json|src\/main|src\/App|server\.ts|\.py|\.js|\.tsx)$/i)
-      ).slice(0, 5);
-
-      const fileContents = await Promise.all(priorityFiles.map(async (f) => {
-        const content = await githubApi.getFileContent(owner, repo, f.path, currentBranch);
-        return { path: f.path, content };
-      }));
-
-      // Carrega automaticamente documentação .md/.txt para suporte ao chat docente
-      const docFiles = allNodes
-        .filter((f) => f.type === 'blob' && TEACHING_DOC_REGEX.test(f.path))
-        .slice(0, MAX_TEACHING_DOCS);
-
-      const docsLoaded = await Promise.allSettled(
-        docFiles.map(async (f) => ({
-          path: f.path,
-          content: await githubApi.getFileContent(owner, repo, f.path, currentBranch)
-        }))
-      );
-
-      const availableDocs = docsLoaded
-        .filter((r): r is PromiseFulfilledResult<{ path: string; content: string }> => r.status === 'fulfilled')
-        .map((r) => r.value)
-        .filter((d) => d.content.trim().length > 0);
-
-      setTeachingDocs(availableDocs);
-
-      await performAnalysis([...fileContents, ...availableDocs]);
-      
       return { owner, repo, allFiles: allNodes, branch: currentBranch };
     } catch (err) {
       console.error(err);
@@ -96,7 +71,37 @@ export function useGithubRepository() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [parseRepoInfo, setError]);
+
+  const loadTeachingDocs = useCallback(async () => {
+    if (!repoUrl) return [];
+
+    if (teachingDocs.length > 0) {
+      return teachingDocs;
+    }
+
+    const { owner, repo } = parseRepoInfo(repoUrl);
+    const treeData = await githubApi.getTree(owner, repo);
+
+    const docFiles = treeData.tree
+      .filter((f) => f.type === 'blob' && TEACHING_DOC_REGEX.test(f.path))
+      .slice(0, MAX_TEACHING_DOCS);
+
+    const docsLoaded = await Promise.allSettled(
+      docFiles.map(async (f) => ({
+        path: f.path,
+        content: await githubApi.getFileContent(owner, repo, f.path, branch)
+      }))
+    );
+
+    const availableDocs = docsLoaded
+      .filter((r): r is PromiseFulfilledResult<{ path: string; content: string }> => r.status === 'fulfilled')
+      .map((r) => r.value)
+      .filter((d) => d.content.trim().length > 0);
+
+    setTeachingDocs(availableDocs);
+    return availableDocs;
+  }, [repoUrl, teachingDocs, parseRepoInfo, branch]);
 
   const selectFile = useCallback(async (path: string) => {
     if (!repoUrl) return;
@@ -168,6 +173,7 @@ export function useGithubRepository() {
     navigateBack,
     navigateForward,
     clearRepository,
+    loadTeachingDocs,
     setSelectedFile,
     setError
   };

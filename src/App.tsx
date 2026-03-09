@@ -23,6 +23,7 @@ export default function App() {
   const [maximizedPanel, setMaximizedPanel] = useState<'chat' | 'file' | null>(null);
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRunningInitialAnalysis, setIsRunningInitialAnalysis] = useState(false);
 
   // Custom Hooks
   const {
@@ -40,6 +41,7 @@ export default function App() {
     navigateBack,
     navigateForward,
     clearRepository,
+    loadTeachingDocs,
     setSelectedFile,
     setError: setRepoError
   } = useGithubRepository();
@@ -90,8 +92,29 @@ export default function App() {
 
   // Handlers
   const handleAnalyze = async (url: string) => {
-    await analyzeRepository(url, performInitialAnalysis);
+    await analyzeRepository(url);
     setActiveMobileTab('chat');
+  };
+
+  const handleRunInitialAnalysis = async () => {
+    if (!repoUrl || isRunningInitialAnalysis) return;
+
+    setIsRunningInitialAnalysis(true);
+    const loadingToastId = showToast('Executando análise inicial...', 'loading', 0);
+
+    try {
+      const docs = await loadTeachingDocs();
+      await performInitialAnalysis(docs);
+      hideToast(loadingToastId);
+      showToast('Análise inicial concluída!', 'success');
+    } catch (err: any) {
+      hideToast(loadingToastId);
+      const msg = err.message || 'Falha ao executar a análise inicial.';
+      setRepoError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setIsRunningInitialAnalysis(false);
+    }
   };
 
   const handleGenerateReadingSheet = async () => {
@@ -175,6 +198,14 @@ export default function App() {
                       {isGeneratingReadingSheet ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
                       Ficha de Leitura
                     </button>
+                    <button
+                      onClick={handleRunInitialAnalysis}
+                      disabled={isRunningInitialAnalysis}
+                      className="text-[10px] bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded px-2 py-1 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                      {isRunningInitialAnalysis ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+                      Analisar com IA
+                    </button>
                   </div>
                 </div>
                 <FileTree files={files} onSelect={handleFileSelect} />
@@ -224,6 +255,14 @@ export default function App() {
                             >
                               {isGeneratingReadingSheet ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
                               Gerar Ficha de Leitura
+                            </button>
+                            <button
+                              onClick={handleRunInitialAnalysis}
+                              disabled={isRunningInitialAnalysis}
+                              className="w-full text-[10px] bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded px-2 py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                            >
+                              {isRunningInitialAnalysis ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+                              Analisar com IA
                             </button>
                           </div>
                         </div>
