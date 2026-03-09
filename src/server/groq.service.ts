@@ -132,6 +132,7 @@ function getKeyManager(): GroqKeyManager {
 
 export const GROQ_PRIMARY_MODEL  = 'openai/gpt-oss-120b';
 export const GROQ_FALLBACK_MODEL = 'openai/gpt-oss-120b'; // fallback com tool use e menor quota
+export const GROQ_MAX_TOKENS = 2048;
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -329,7 +330,7 @@ export async function groqChatStream(options: {
           tools: LECTOR_TOOLS,
           tool_choice: 'auto',
           temperature: 0.7,
-          max_tokens: 8192,
+          max_tokens: GROQ_MAX_TOKENS,
         }),
       );
 
@@ -354,7 +355,7 @@ export async function groqChatStream(options: {
             model: GROQ_PRIMARY_MODEL,
             messages: messagesForStream,
             temperature: 0.7,
-            max_tokens: 8192,
+            max_tokens: GROQ_MAX_TOKENS,
             stream: true,
           }),
         );
