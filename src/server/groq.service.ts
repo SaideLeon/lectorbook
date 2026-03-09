@@ -4,22 +4,45 @@
  * Serviço Groq: fallback para quando a Gemini retorna erros (500, 503, etc.)
  * Inclui definição de tools, executor de tools e chat com loop agêntico.
  *
- * Instale o SDK: npm install groq-sdk
  */
 
-import Groq from 'groq-sdk';
+type GroqMessage = {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: GroqToolCall[];
+  tool_call_id?: string;
+};
+
+type GroqToolCall = {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+};
+
+type GroqTool = {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: Record<string, { type: string; description: string }>;
+      required: string[];
+    };
+  };
+};
 
 // ─── Cliente ────────────────────────────────────────────────────────────────
 
-let _groqClient: Groq | null = null;
+let _groqApiKey: string | null = null;
 
-export function getGroqClient(): Groq {
-  if (!_groqClient) {
+export function getGroqApiKey(): string {
+  if (!_groqApiKey) {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error('GROQ_API_KEY não configurada no ambiente.');
-    _groqClient = new Groq({ apiKey });
+    _groqApiKey = apiKey;
   }
-  return _groqClient;
+  return _groqApiKey;
 }
 
 // Modelos disponíveis com suporte a tool use
@@ -33,7 +56,7 @@ export const GROQ_FALLBACK_MODEL  = 'llama3-groq-70b-8192-tool-use-preview'; // 
 //
 // Formato: array de objetos { type: 'function', function: { name, description, parameters } }
 
-export const LECTOR_TOOLS: Groq.Chat.Completions.ChatCompletionTool[] = [
+export const LECTOR_TOOLS: GroqTool[] = [
   {
     type: 'function',
     function: {
@@ -195,7 +218,7 @@ export function executeGroqTool(
 const MAX_TOOL_ITERATIONS = 4;
 
 export async function groqChatStream(options: {
-  messages: Groq.Chat.Completions.ChatCompletionMessageParam[];
+  messages: GroqMessage[];
   systemInstruction: string;
   contextFiles: { path: string; content: string }[];
   onChunk: (text: string) => void;
@@ -203,9 +226,9 @@ export async function groqChatStream(options: {
   onError: (err: Error) => void;
 }): Promise<void> {
   const { messages, systemInstruction, contextFiles, onChunk, onDone, onError } = options;
-  const client = getGroqClient();
+  const apiKey = getGroqApiKey();
 
-  const fullMessages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
+  const fullMessages: GroqMessage[] = [
     { role: 'system', content: systemInstruction },
     ...messages,
   ];
@@ -214,13 +237,26 @@ export async function groqChatStream(options: {
     // ── Loop agêntico ────────────────────────────────────────────────────────
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       // Chamada não-streaming para checar se há tool calls
-      const response = await client.chat.completions.create({
-        model: GROQ_PRIMARY_MODEL,
-        messages: fullMessages,
-        tools: LECTOR_TOOLS,
-        tool_choice: 'auto',
-        temperature: 0.7,
-        max_tokens: 8192,
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_PRIMARY_MODEL,
+          messages: fullMessages,
+          tools: LECTOR_TOOLS,
+          tool_choice: 'auto',
+          temperature: 0.7,
+          max_tokens: 8192,
+        }),
+      }).then(async res => {
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`Groq API error (${res.status}): ${body}`);
+        }
+        return res.json();
       });
 
       const choice = response.choices[0];
@@ -240,17 +276,51 @@ export async function groqChatStream(options: {
         // Remove a última mensagem do assistente que acabamos de adicionar
         const messagesForStream = fullMessages.slice(0, -1);
 
-        const stream = await client.chat.completions.create({
-          model: GROQ_PRIMARY_MODEL,
-          messages: messagesForStream,
-          temperature: 0.7,
-          max_tokens: 8192,
-          stream: true,
+        const streamResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: GROQ_PRIMARY_MODEL,
+            messages: messagesForStream,
+            temperature: 0.7,
+            max_tokens: 8192,
+            stream: true,
+          }),
         });
 
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content ?? '';
-          if (text) onChunk(text);
+        if (!streamResponse.ok || !streamResponse.body) {
+          const body = await streamResponse.text();
+          throw new Error(`Groq stream error (${streamResponse.status}): ${body}`);
+        }
+
+        const decoder = new TextDecoder();
+        const reader = streamResponse.body.getReader();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() ?? '';
+
+          for (const event of events) {
+            const lines = event
+              .split('\n')
+              .filter(line => line.startsWith('data: '))
+              .map(line => line.slice(6));
+
+            for (const line of lines) {
+              if (line === '[DONE]') continue;
+              const parsed = JSON.parse(line);
+              const text = parsed?.choices?.[0]?.delta?.content ?? '';
+              if (text) onChunk(text);
+            }
+          }
         }
 
         onDone();
