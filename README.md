@@ -1,4 +1,4 @@
-# Lectorbook
+# Lectorbook 
 
 Lectorbook é uma aplicação web para **analisar repositórios GitHub com apoio de IA**.
 A interface permite carregar a árvore de arquivos de um repositório, visualizar conteúdos de arquivos, conversar com um assistente sobre o código e gerar uma ficha de leitura do conteúdo.
@@ -83,3 +83,4 @@ src/
 
 - A listagem de repositórios do usuário depende de `GITHUB_TOKEN` configurado no servidor.
 - Se houver erro de autenticação GitHub, verifique primeiro o `.env` e permissões do token.
+ter varias chaves
