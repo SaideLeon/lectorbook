@@ -130,8 +130,8 @@ function getKeyManager(): GroqKeyManager {
 
 // ─── Modelos ─────────────────────────────────────────────────────────────────
 
-export const GROQ_PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
-export const GROQ_FALLBACK_MODEL = 'llama3-70b-8192'; // fallback com tool use e menor quota
+export const GROQ_PRIMARY_MODEL  = 'openai/gpt-oss-120b';
+export const GROQ_FALLBACK_MODEL = 'openai/gpt-oss-120b'; // fallback com tool use e menor quota
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
