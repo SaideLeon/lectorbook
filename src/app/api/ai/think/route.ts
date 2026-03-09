@@ -9,7 +9,11 @@ import { NextRequest } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { groqChatStream } from '@/server/groq.service';
 import { jsonError } from '@/app/api/_utils';
-import type Groq from 'groq-sdk';
+
+type GroqMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 export const runtime = 'nodejs';
 
@@ -133,7 +137,7 @@ export async function POST(req: NextRequest) {
     // ── Tenta Groq como fallback ──────────────────────────────────────────
     const tryGroq = (): ReadableStream => {
       // Converte o histórico para o formato Groq (OpenAI-compatible)
-      const groqMessages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
+      const groqMessages: GroqMessage[] = [
         {
           role: 'user',
           content: `Contexto geral do repositório:\n${context}`,
