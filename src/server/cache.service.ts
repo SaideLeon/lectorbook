@@ -3,6 +3,9 @@ const TTL_MS = 12 * 60 * 60 * 1000;
 interface CacheEntry<T> {
   data: T;
   createdAt: number;
+  headSha?: string;
+  etag?: string;
+  lastModified?: string;
 }
 
 const treeCache = new Map<string, CacheEntry<any>>();
@@ -10,6 +13,10 @@ const fileCache = new Map<string, CacheEntry<string>>();
 
 export const cacheService = {
   getTree(owner: string, repo: string, branch: string) {
+    return this.getTreeEntry(owner, repo, branch)?.data ?? null;
+  },
+
+  getTreeEntry(owner: string, repo: string, branch: string) {
     const id = `${owner}/${repo}/${branch}`;
     const entry = treeCache.get(id);
     if (!entry) return null;
@@ -17,12 +24,30 @@ export const cacheService = {
       treeCache.delete(id);
       return null;
     }
-    return entry.data;
+    return entry;
   },
 
-  setTree(owner: string, repo: string, branch: string, data: any) {
+  setTree(
+    owner: string,
+    repo: string,
+    branch: string,
+    data: any,
+    metadata?: { headSha?: string; etag?: string; lastModified?: string }
+  ) {
     const id = `${owner}/${repo}/${branch}`;
-    treeCache.set(id, { data, createdAt: Date.now() });
+    treeCache.set(id, { data, createdAt: Date.now(), ...metadata });
+  },
+
+  invalidateRepositoryBranch(owner: string, repo: string, branch: string) {
+    const treeId = `${owner}/${repo}/${branch}`;
+    treeCache.delete(treeId);
+
+    const filePrefix = `${owner}/${repo}/${branch}/`;
+    for (const key of fileCache.keys()) {
+      if (key.startsWith(filePrefix)) {
+        fileCache.delete(key);
+      }
+    }
   },
 
   getFileContent(owner: string, repo: string, branch: string, filePath: string) {

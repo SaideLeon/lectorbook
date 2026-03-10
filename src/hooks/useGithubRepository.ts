@@ -4,8 +4,11 @@ import { githubApi } from '@/services/github.api';
 
 const TEACHING_DOC_REGEX = /\.(md|txt)$/i;
 const MAX_TEACHING_DOCS = 15;
+const REPO_UPDATE_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
-export function useGithubRepository() {
+type AnalyzeRepositoryFn = (files: { path: string, content: string }[]) => Promise<string>;
+
+export function useGithubRepository(onRepositoryUpdated?: () => void) {
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<FileNode[]>([]);
   const [branch, setBranch] = useState<string>('main');
@@ -15,6 +18,8 @@ export function useGithubRepository() {
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
   const [teachingDocs, setTeachingDocs] = useState<{ path: string, content: string }[]>([]);
+  const [headSha, setHeadSha] = useState<string | null>(null);
+  const analysisFnRef = useRef<AnalyzeRepositoryFn | null>(null);
   
   // History
   const [fileHistory, setFileHistory] = useState<{ path: string, content: string }[]>([]);
@@ -34,12 +39,17 @@ export function useGithubRepository() {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
   }, []);
 
-  const analyzeRepository = useCallback(async (url: string, performAnalysis: (files: { path: string, content: string }[]) => Promise<string>) => {
-    setIsLoading(true);
+  const analyzeRepository = useCallback(async (
+    url: string,
+    performAnalysis: AnalyzeRepositoryFn,
+    options?: { silent?: boolean }
+  ) => {
+    if (!options?.silent) setIsLoading(true);
     setError(null);
     setRepoUrl(url);
     setTeachingDocs([]);
     setRepoDescription(null);
+    analysisFnRef.current = performAnalysis;
     
     try {
       const cleanUrl = url.replace(/\.git\/?$/, '').replace(/\/$/, '');
@@ -55,7 +65,9 @@ export function useGithubRepository() {
       });
 
       const currentBranch = treeData.branch || 'main';
+      const currentHeadSha = treeData.headSha || null;
       setBranch(currentBranch);
+      setHeadSha(currentHeadSha);
       setRepoDescription(treeData.description || null);
       
       // Inicial: mantém análise rápida com arquivos prioritários de código/configuração
@@ -94,9 +106,34 @@ export function useGithubRepository() {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Ocorreu um erro ao buscar o repositório.');
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!repoUrl || !branch || !headSha || !analysisFnRef.current) return;
+
+    const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
+    const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (!match) return;
+    const [, owner, repo] = match;
+
+    const checkForUpdates = async () => {
+      try {
+        const latestHeadSha = await githubApi.getHeadSha(owner, repo, branch);
+        if (latestHeadSha === headSha || !analysisFnRef.current) return;
+
+        githubApi.clearCache();
+        onRepositoryUpdated?.();
+        await analyzeRepository(repoUrl, analysisFnRef.current, { silent: true });
+      } catch (err) {
+        console.error('Falha ao verificar atualizações do repositório:', err);
+      }
+    };
+
+    const interval = setInterval(checkForUpdates, REPO_UPDATE_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [repoUrl, branch, headSha, analyzeRepository, onRepositoryUpdated]);
 
   const selectFile = useCallback(async (path: string) => {
     if (!repoUrl) return;
@@ -148,6 +185,7 @@ export function useGithubRepository() {
     setSelectedFile(null);
     setTeachingDocs([]);
     setRepoDescription(null);
+    setHeadSha(null);
     setFileHistory([]);
     setCurrentHistoryIndex(-1);
     githubApi.clearCache();

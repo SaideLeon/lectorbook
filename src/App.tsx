@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, FileText, MessageSquare, Files, Eye, Menu, X as CloseIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,10 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Custom Hooks
+  const handleRepositoryUpdated = useCallback(() => {
+    showToast('Repositório atualizado no GitHub. Reanalisando automaticamente...', 'info');
+  }, [showToast]);
+
   const {
     repoUrl,
     files,
@@ -42,7 +46,7 @@ export default function App() {
     clearRepository,
     setSelectedFile,
     setError: setRepoError
-  } = useGithubRepository();
+  } = useGithubRepository(handleRepositoryUpdated);
 
   const {
     chatHistory,
