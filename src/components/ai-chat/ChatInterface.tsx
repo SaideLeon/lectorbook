@@ -84,6 +84,29 @@ function ChatInput({
   const chunksRef = useRef<BlobPart[]>([]);
   const textareaRef = useAutoResize(input, isExpanded);
 
+  const getPreferredAudioMimeType = useCallback(() => {
+    if (typeof MediaRecorder === 'undefined') return undefined;
+
+    const supportedMimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+    ];
+
+    return supportedMimeTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType));
+  }, []);
+
+  const getAudioExtension = useCallback((mimeType?: string) => {
+    if (!mimeType) return 'webm';
+    if (mimeType.includes('mp4')) return 'm4a';
+    if (mimeType.includes('ogg')) return 'ogg';
+    if (mimeType.includes('mpeg')) return 'mp3';
+    if (mimeType.includes('wav')) return 'wav';
+    return 'webm';
+  }, []);
+
   // When collapsing, re-trigger auto-resize
 
   const handleStopRecording = useCallback(() => {
@@ -98,7 +121,10 @@ function ChatInput({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const preferredMimeType = getPreferredAudioMimeType();
+      const mediaRecorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -108,9 +134,10 @@ function ChatInput({
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
-        const ext = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
-        const audioFile = new File([audioBlob], `recording.${ext}`, { type: audioBlob.type || 'audio/webm' });
+        const recordedMimeType = mediaRecorder.mimeType || chunksRef.current.at(0)?.type || preferredMimeType || 'audio/webm';
+        const audioBlob = new Blob(chunksRef.current, { type: recordedMimeType });
+        const ext = getAudioExtension(audioBlob.type || recordedMimeType);
+        const audioFile = new File([audioBlob], `recording.${ext}`, { type: audioBlob.type || recordedMimeType });
 
         stream.getTracks().forEach((track) => track.stop());
         setIsRecording(false);
@@ -134,7 +161,7 @@ function ChatInput({
     } catch (error) {
       console.error('Falha ao iniciar gravação de áudio:', error);
     }
-  }, [handleStopRecording, isRecording, onTranscribeAudio, setInput]);
+  }, [getAudioExtension, getPreferredAudioMimeType, handleStopRecording, isRecording, onTranscribeAudio, setInput]);
 
 
 
