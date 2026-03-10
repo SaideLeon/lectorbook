@@ -3,7 +3,8 @@ import { AppError, jsonError } from '@/app/api/_utils';
 
 export const runtime = 'nodejs';
 
-const groqApiKey = process.env.GROQ_API_KEY;
+const rawGroqKey = process.env.GROQ_API_KEY ?? '';
+const groqApiKey = rawGroqKey.split(',').map((k) => k.trim()).find((k) => k.length > 0);
 
 export async function POST(req: NextRequest) {
   try {
