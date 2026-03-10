@@ -1,9 +1,11 @@
 import { pipeline, type Pipeline } from '@xenova/transformers';
 
-let _embedder: Pipeline | null = null;
-let _loading: Promise<Pipeline> | null = null;
+type Embedder = Awaited<ReturnType<typeof pipeline>>;
 
-export async function getEmbedder(): Promise<Pipeline> {
+let _embedder: Embedder | null = null;
+let _loading: Promise<Embedder> | null = null;
+
+export async function getEmbedder(): Promise<Embedder> {
   if (_embedder) return _embedder;
   if (_loading) return _loading;
 
