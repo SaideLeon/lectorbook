@@ -12,6 +12,7 @@ export interface RepoTreeResponse {
   url: string;
   tree: FileNode[];
   truncated: boolean;
+  headSha?: string;
   branch?: string;
   owner?: string;
   repo?: string;

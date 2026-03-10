@@ -47,6 +47,17 @@ export const githubApi = {
     return res.json();
   },
 
+  async getHeadSha(owner: string, repo: string, branch: string): Promise<string> {
+    const res = await fetch(`/api/github/head?owner=${owner}&repo=${repo}&branch=${branch}`);
+
+    if (!res.ok) {
+      throw new Error('Falha ao verificar atualizações do repositório');
+    }
+
+    const data = await res.json();
+    return data.headSha;
+  },
+
   async getFileContent(owner: string, repo: string, path: string, branch: string): Promise<string> {
     const cacheKey = `${owner}/${repo}/${branch}/${path}`;
     if (fileCache.has(cacheKey)) {

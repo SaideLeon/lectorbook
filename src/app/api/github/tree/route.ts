@@ -4,6 +4,13 @@ import { cacheService } from '@/server/cache.service';
 import { getGithubHeaders } from '@/server/github';
 import { GithubRepoInfo, GithubTreeResponse } from '@/server/github.types';
 
+interface GithubBranchResponse {
+  name: string;
+  commit: {
+    sha: string;
+  };
+}
+
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
@@ -27,8 +34,43 @@ export async function GET(req: NextRequest) {
     }
     repoDescription = repoInfo.description;
 
-    const cachedTree = cacheService.getTree(owner, repo, targetBranch);
-    if (cachedTree) return NextResponse.json(cachedTree);
+    const cachedTreeEntry = cacheService.getTreeEntry(owner, repo, targetBranch);
+
+    const branchHeaders = getGithubHeaders(req);
+    if (cachedTreeEntry?.etag) {
+      branchHeaders['If-None-Match'] = cachedTreeEntry.etag;
+    }
+    if (cachedTreeEntry?.lastModified) {
+      branchHeaders['If-Modified-Since'] = cachedTreeEntry.lastModified;
+    }
+
+    const branchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches/${targetBranch}`, {
+      headers: branchHeaders,
+    });
+
+    if (branchRes.status === 304 && cachedTreeEntry) {
+      return NextResponse.json(cachedTreeEntry.data);
+    }
+
+    if (!branchRes.ok) {
+      throw new AppError('Failed to fetch repository branch info', branchRes.status, await branchRes.json());
+    }
+
+    const branchData = (await branchRes.json()) as GithubBranchResponse;
+    const latestHeadSha = branchData.commit.sha;
+    const branchEtag = branchRes.headers.get('etag') ?? undefined;
+    const branchLastModified = branchRes.headers.get('last-modified') ?? undefined;
+
+    if (cachedTreeEntry && cachedTreeEntry.headSha === latestHeadSha) {
+      cacheService.setTree(owner, repo, targetBranch, cachedTreeEntry.data, {
+        headSha: latestHeadSha,
+        etag: branchEtag,
+        lastModified: branchLastModified,
+      });
+      return NextResponse.json(cachedTreeEntry.data);
+    }
+
+    cacheService.invalidateRepositoryBranch(owner, repo, targetBranch);
 
     const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${targetBranch}?recursive=1`, { headers });
     if (!treeRes.ok) {
@@ -36,8 +78,20 @@ export async function GET(req: NextRequest) {
     }
 
     const treeData = (await treeRes.json()) as GithubTreeResponse;
-    const result = { owner, repo, fullName: repoInfo.full_name, description: repoDescription, branch: targetBranch, tree: treeData.tree };
-    cacheService.setTree(owner, repo, targetBranch, result);
+    const result = {
+      owner,
+      repo,
+      fullName: repoInfo.full_name,
+      description: repoDescription,
+      branch: targetBranch,
+      headSha: latestHeadSha,
+      tree: treeData.tree,
+    };
+    cacheService.setTree(owner, repo, targetBranch, result, {
+      headSha: latestHeadSha,
+      etag: branchEtag,
+      lastModified: branchLastModified,
+    });
 
     return NextResponse.json(result);
   } catch (error) {
