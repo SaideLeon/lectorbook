@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
-import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause } from 'lucide-react';
+import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -8,6 +8,7 @@ import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 import { AnalysisMessage } from '@/types';
 import { useFullscreen } from '@/contexts/FullscreenContext';
+import { generateStyledPdfFromMarkdown } from '@/utils/pdf-generator';
 
 const CodeBlock = ({ language, children, ...props }: any) => {
   const [isCopied, setIsCopied] = useState(false);
@@ -415,6 +416,20 @@ export const ChatInterface = ({
     }
   }, []);
 
+  const handleDownloadMessagePdf = useCallback((content: string, key: string) => {
+    if (!content?.trim()) return;
+
+    const blob = generateStyledPdfFromMarkdown(content, 'Resposta do Tutor de Leitura Lector');
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `resposta-ia-${key.replace(/[^a-zA-Z0-9-_]/g, '-')}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, []);
+
   return (
     <div
       className={cn(
@@ -507,8 +522,29 @@ export const ChatInterface = ({
                   : 'bg-[#1a1a1a] border border-white/10 text-gray-200'
               )}
             >
+              <div className="prose prose-invert prose-sm max-w-none break-words">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code(props) {
+                      const { children, className, node, ref, ...rest } = props;
+                      const match = /language-(\w+)/.exec(className || '');
+                      return match ? (
+                        <CodeBlock language={match[1]} children={children} {...rest} />
+                      ) : (
+                        <code {...rest} ref={ref} className={className}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {DOMPurify.sanitize(msg.content)}
+                </ReactMarkdown>
+              </div>
+
               {msg.role === 'model' && (
-                <div className="mb-3 flex justify-end gap-2">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => handleSpeakMessage(msg.content, messageKey)}
@@ -546,29 +582,19 @@ export const ChatInterface = ({
                       </>
                     )}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadMessagePdf(msg.content, messageKey)}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300 hover:text-white transition-colors"
+                    title="Baixar resposta em PDF"
+                    aria-label="Baixar resposta da IA em PDF"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    PDF
+                  </button>
                 </div>
               )}
-
-              <div className="prose prose-invert prose-sm max-w-none break-words">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code(props) {
-                      const { children, className, node, ref, ...rest } = props;
-                      const match = /language-(\w+)/.exec(className || '');
-                      return match ? (
-                        <CodeBlock language={match[1]} children={children} {...rest} />
-                      ) : (
-                        <code {...rest} ref={ref} className={className}>
-                          {children}
-                        </code>
-                      );
-                    },
-                  }}
-                >
-                  {DOMPurify.sanitize(msg.content)}
-                </ReactMarkdown>
-              </div>
 
               {msg.relatedLinks && msg.relatedLinks.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-white/10">
