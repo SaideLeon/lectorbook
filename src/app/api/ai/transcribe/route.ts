@@ -14,12 +14,14 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const audio = formData.get('audio');
 
-    if (!(audio instanceof File)) {
+    if (!(audio instanceof Blob)) {
       throw new AppError('Arquivo de áudio inválido.', 400);
     }
 
+    const fileName = audio instanceof File ? (audio.name || 'audio.webm') : 'audio.webm';
+
     const payload = new FormData();
-    payload.append('file', audio, audio.name || 'audio.webm');
+    payload.append('file', audio, fileName);
     payload.append('model', 'whisper-large-v3-turbo');
     payload.append('temperature', '0');
     payload.append('response_format', 'verbose_json');
