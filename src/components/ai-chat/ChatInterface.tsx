@@ -81,7 +81,7 @@ function ChatInput({
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingRecording, setIsProcessingRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const chunksRef = useRef<Blob[]>([]);
   const textareaRef = useAutoResize(input, isExpanded);
 
   const getPreferredAudioMimeType = useCallback(() => {
