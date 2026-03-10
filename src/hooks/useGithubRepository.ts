@@ -19,6 +19,8 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
   const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
   const [teachingDocs, setTeachingDocs] = useState<{ path: string, content: string }[]>([]);
   const [headSha, setHeadSha] = useState<string | null>(null);
+  const [owner, setOwner] = useState<string | null>(null);
+  const [repo, setRepo] = useState<string | null>(null);
   const analysisFnRef = useRef<AnalyzeRepositoryFn | null>(null);
   
   // History
@@ -56,6 +58,8 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
       const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
       if (!match) throw new Error('URL do GitHub inválida. Use o formato: https://github.com/usuario/repo');
       const [, owner, repo] = match;
+      setOwner(owner);
+      setRepo(repo);
 
       const treeData = await githubApi.getTree(owner, repo);
       const allNodes = treeData.tree;
@@ -186,6 +190,8 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
     setTeachingDocs([]);
     setRepoDescription(null);
     setHeadSha(null);
+    setOwner(null);
+    setRepo(null);
     setFileHistory([]);
     setCurrentHistoryIndex(-1);
     githubApi.clearCache();
@@ -199,6 +205,9 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
     error,
     selectedFile,
     teachingDocs,
+    headSha,
+    owner,
+    repo,
     fileHistory,
     currentHistoryIndex,
     analyzeRepository,

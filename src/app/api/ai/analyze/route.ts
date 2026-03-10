@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { jsonError } from '@/app/api/_utils';
+import { warmupRepositoryIndex } from '@/server/rag/rag.service';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, contextFiles, apiKey } = await req.json();
+    const { prompt, contextFiles, apiKey, owner, repo, headSha } = await req.json();
     const ai = getAIClient(apiKey);
     const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
     const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
@@ -14,6 +15,11 @@ export async function POST(req: NextRequest) {
       timeStyle: 'long',
       timeZone: 'Africa/Maputo',
     }).format(new Date());
+
+    warmupRepositoryIndex(
+      { owner, repo, headSha },
+      (contextFiles || []).filter((f: any) => /\.(md|txt)$/i.test(f.path)),
+    );
 
     const fullPrompt = `
       Você é o Tutor de Leitura principal chamado "Lector".

@@ -8,7 +8,9 @@ import { loadGeminiApiKeys, saveGeminiApiKeys } from '@/utils/indexeddb';
 
 const ERROR_DISPLAY_MS = 8000;
 
-export function useAIChat() {
+type RepoMeta = { owner: string; repo: string; headSha: string };
+
+export function useAIChat(repoMeta?: RepoMeta) {
   const [chatHistory, setChatHistory] = useState<AnalysisMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [isWaitingForFirstChunk, setIsWaitingForFirstChunk] = useState(false);
@@ -102,7 +104,7 @@ export function useAIChat() {
         content: limitTextContext(f.content)
       }));
 
-      const aiRes = await analyzeCode(limitedFiles, undefined, activeKey);
+      const aiRes = await analyzeCode(limitedFiles, undefined, activeKey, repoMeta);
       const analysisText = getResponseText(aiRes);
       
       if (!analysisText) {
@@ -125,7 +127,7 @@ export function useAIChat() {
       console.error('AI Analysis Error:', error);
       throw error;
     }
-  }, [getNextKey]);
+  }, [getNextKey, repoMeta]);
 
   const sendMessage = useCallback(async (msg: string, contextFiles: { path: string; content: string }[] = []) => {
     const newHistory = [...chatHistory, { role: 'user', content: msg, timestamp: Date.now() } as AnalysisMessage];
@@ -197,7 +199,8 @@ export function useAIChat() {
             });
           }
         },
-        activeKey
+        activeKey,
+        repoMeta
       );
 
       if (!streamedText.trim()) {
@@ -239,7 +242,7 @@ export function useAIChat() {
       setIsThinking(false);
       setIsWaitingForFirstChunk(false);
     }
-  }, [chatHistory, analysis, getNextKey, appendLog]);
+  }, [chatHistory, analysis, getNextKey, appendLog, repoMeta]);
 
   const generateReadingSheet = useCallback(async (repoName: string, contextFiles: { path: string, content: string }[]) => {
     if (!analysis) return;

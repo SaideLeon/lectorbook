@@ -1,7 +1,10 @@
+type RepoMeta = { owner: string; repo: string; headSha: string };
+
 export async function analyzeCode(
   files: { path: string; content: string }[],
   userQuery?: string,
-  apiKey?: string
+  apiKey?: string,
+  repoMeta?: RepoMeta
 ) {
   const response = await fetch('/api/ai/analyze', {
     method: 'POST',
@@ -9,7 +12,8 @@ export async function analyzeCode(
     body: JSON.stringify({
       contextFiles: files,
       prompt: userQuery,
-      apiKey
+      apiKey,
+      ...(repoMeta || {})
     })
   });
 
@@ -32,7 +36,8 @@ export async function thinkAndSuggest(
   currentInput: string,
   context: string,
   contextFiles: { path: string; content: string }[] = [],
-  apiKey?: string
+  apiKey?: string,
+  repoMeta?: RepoMeta
 ) {
   const response = await fetch('/api/ai/think', {
     method: 'POST',
@@ -42,7 +47,8 @@ export async function thinkAndSuggest(
       currentInput,
       context,
       contextFiles,
-      apiKey
+      apiKey,
+      ...(repoMeta || {})
     })
   });
 
@@ -156,7 +162,8 @@ export async function thinkAndSuggestStream(
     onChunk: (text: string) => void;
     onDone?: (relatedLinks: { title: string; url: string }[]) => void;
   },
-  apiKey?: string
+  apiKey?: string,
+  repoMeta?: RepoMeta
 ) {
   const response = await fetch('/api/ai/think', {
     method: 'POST',
@@ -167,6 +174,7 @@ export async function thinkAndSuggestStream(
       context,
       contextFiles,
       apiKey,
+      ...(repoMeta || {}),
     }),
   });
 
