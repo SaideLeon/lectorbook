@@ -37,6 +37,9 @@ export default function App() {
     error: repoError,
     selectedFile,
     teachingDocs,
+    headSha,
+    owner,
+    repo,
     fileHistory,
     currentHistoryIndex,
     analyzeRepository,
@@ -47,6 +50,8 @@ export default function App() {
     setSelectedFile,
     setError: setRepoError
   } = useGithubRepository(handleRepositoryUpdated);
+
+  const repoMeta = owner && repo && headSha ? { owner, repo, headSha } : undefined;
 
   const {
     chatHistory,
@@ -65,7 +70,7 @@ export default function App() {
     apiKeys,
     keyIndex,
     handleKeyFileUpload
-  } = useAIChat();
+  } = useAIChat(repoMeta);
 
   // Effects
   useEffect(() => {

@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { groqChatStream } from '@/server/groq.service';
 import { jsonError } from '@/app/api/_utils';
+import { retrieveRelevantChunks, warmupRepositoryIndex } from '@/server/rag/rag.service';
 
 type GroqMessage = {
   role: 'user' | 'assistant';
@@ -62,7 +63,26 @@ export async function POST(req: NextRequest) {
       context,
       contextFiles = [],
       apiKey,
+      owner,
+      repo,
+      headSha,
     } = await req.json();
+
+
+    const docsForRag = (contextFiles as any[]).filter((f: any) => /\.(md|txt)$/i.test(f.path));
+    const repoMeta = { owner, repo, headSha };
+
+    let selectedContextFiles = contextFiles as any[];
+    try {
+      const ragChunks = await retrieveRelevantChunks(repoMeta, currentInput, 5);
+      if (ragChunks.length > 0) {
+        selectedContextFiles = ragChunks;
+      } else {
+        warmupRepositoryIndex(repoMeta, docsForRag);
+      }
+    } catch (ragError) {
+      console.warn('[RAG] Falha no retrieve em /think:', ragError);
+    }
 
     const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
       dateStyle: 'full',
@@ -70,7 +90,7 @@ export async function POST(req: NextRequest) {
       timeZone: 'Africa/Maputo',
     }).format(new Date());
 
-    const docsContext = (contextFiles as any[])
+    const docsContext = (selectedContextFiles as any[])
       .map((f: any) => `--- ${f.path} ---\n${f.content}\n`)
       .join('\n');
 
@@ -158,7 +178,7 @@ export async function POST(req: NextRequest) {
           groqChatStream({
             messages: groqMessages,
             systemInstruction,
-            contextFiles,
+            contextFiles: selectedContextFiles,
             onChunk(text) {
               controller.enqueue(
                 encoder.encode(`${JSON.stringify({ type: 'chunk', text })}\n`),
