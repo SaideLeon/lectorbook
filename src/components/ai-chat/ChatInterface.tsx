@@ -512,6 +512,18 @@ export const ChatInterface = ({
 
         {messages.map((msg, idx) => {
           const messageKey = `${msg.timestamp || idx}-${msg.role}-${idx}`;
+
+          if (msg.isSystemNotice) {
+            return (
+              <div key={messageKey} className="flex justify-center">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+                  {msg.content}
+                </div>
+              </div>
+            );
+          }
+
           return (
           <div key={messageKey} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div
