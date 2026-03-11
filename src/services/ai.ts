@@ -1,16 +1,14 @@
+// src/services/ai.ts
+
 export async function analyzeCode(
   files: { path: string; content: string }[],
   userQuery?: string,
-  apiKey?: string
+  apiKey?: string,
 ) {
   const response = await fetch('/api/ai/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contextFiles: files,
-      prompt: userQuery,
-      apiKey
-    })
+    body: JSON.stringify({ contextFiles: files, prompt: userQuery, apiKey }),
   });
 
   if (!response.ok) {
@@ -18,32 +16,29 @@ export async function analyzeCode(
     try {
       const errorBody = await response.json();
       if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-    } catch (e) {
-      // Ignore JSON parse error
-    }
+    } catch { /* Ignore */ }
     throw new Error(`AI Analysis failed: ${errorMessage}`);
   }
 
   return response.json();
 }
 
-export async function thinkAndSuggest(
-  history: { role: string; content: string }[],
-  currentInput: string,
-  context: string,
-  contextFiles: { path: string; content: string }[] = [],
-  apiKey?: string
-) {
-  const response = await fetch('/api/ai/think', {
+/**
+ * Ingere os ficheiros do repositório no Supabase Vector Store.
+ * Chamada de forma assíncrona (fire-and-forget) após o carregamento do repositório.
+ *
+ * Se o Supabase não estiver configurado, o servidor retorna { skipped: true }
+ * sem erro — o frontend não precisa tratar.
+ */
+export async function ingestDocuments(
+  files: { path: string; content: string }[],
+  repoFullName: string,
+  apiKey?: string,
+): Promise<{ chunks: number; skipped?: boolean }> {
+  const response = await fetch('/api/ai/ingest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      history,
-      currentInput,
-      context,
-      contextFiles,
-      apiKey
-    })
+    body: JSON.stringify({ files, repoFullName, apiKey }),
   });
 
   if (!response.ok) {
@@ -51,10 +46,8 @@ export async function thinkAndSuggest(
     try {
       const errorBody = await response.json();
       if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-    } catch (e) {
-      // Ignore JSON parse error
-    }
-    throw new Error(`AI Thinking failed: ${errorMessage}`);
+    } catch { /* Ignore */ }
+    throw new Error(`Ingestão falhou: ${errorMessage}`);
   }
 
   return response.json();
@@ -63,16 +56,12 @@ export async function thinkAndSuggest(
 export async function generateReadingSheet(
   files: { path: string; content: string }[],
   context: string,
-  apiKey?: string
+  apiKey?: string,
 ) {
   const response = await fetch('/api/ai/blueprint', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contextFiles: files,
-      context,
-      apiKey
-    })
+    body: JSON.stringify({ contextFiles: files, context, apiKey }),
   });
 
   if (!response.ok) {
@@ -80,9 +69,7 @@ export async function generateReadingSheet(
     try {
       const errorBody = await response.json();
       if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-    } catch (e) {
-      // Ignore JSON parse error
-    }
+    } catch { /* Ignore */ }
     throw new Error(`Reading sheet generation failed: ${errorMessage}`);
   }
 
@@ -102,20 +89,14 @@ export async function transcribeAudio(file: File) {
     let errorMessage = response.statusText;
     try {
       const errorBody = await response.json();
-      if (errorBody.error) {
-        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-      }
-    } catch {
-      // Ignore JSON parse error
-    }
-
+      if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+    } catch { /* Ignore */ }
     throw new Error(`Falha na transcrição de áudio: ${errorMessage}`);
   }
 
   const data = await response.json();
   return data.text as string;
 }
-
 
 export async function synthesizeTextToSpeech(text: string, apiKey?: string) {
   const response = await fetch('/api/ai/tts', {
@@ -128,19 +109,13 @@ export async function synthesizeTextToSpeech(text: string, apiKey?: string) {
     let errorMessage = response.statusText;
     try {
       const errorBody = await response.json();
-      if (errorBody.error) {
-        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-      }
-    } catch {
-      // Ignore JSON parse error
-    }
-
+      if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+    } catch { /* Ignore */ }
     throw new Error(`Falha na síntese de áudio: ${errorMessage}`);
   }
 
   return response.json() as Promise<{ audioBase64: string; mimeType: string }>;
 }
-
 
 type StreamEvent =
   | { type: 'chunk'; text: string }
@@ -156,7 +131,9 @@ export async function thinkAndSuggestStream(
     onChunk: (text: string) => void;
     onDone?: (relatedLinks: { title: string; url: string }[]) => void;
   },
-  apiKey?: string
+  apiKey?: string,
+  sessionId?: string,       // <-- novo: UUID de sessão para persistência
+  repoFullName?: string,    // <-- novo: "usuario/repo" para filtro no Supabase
 ) {
   const response = await fetch('/api/ai/think', {
     method: 'POST',
@@ -167,6 +144,8 @@ export async function thinkAndSuggestStream(
       context,
       contextFiles,
       apiKey,
+      sessionId,
+      repoFullName,
     }),
   });
 
@@ -174,12 +153,8 @@ export async function thinkAndSuggestStream(
     let errorMessage = response.statusText;
     try {
       const errorBody = await response.json();
-      if (errorBody.error) {
-        errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
-      }
-    } catch {
-      // Ignore JSON parse error
-    }
+      if (errorBody.error) errorMessage = typeof errorBody.error === 'string' ? errorBody.error : JSON.stringify(errorBody.error);
+    } catch { /* Ignore */ }
     throw new Error(`AI Thinking failed: ${errorMessage}`);
   }
 
@@ -201,22 +176,10 @@ export async function thinkAndSuggestStream(
 
     for (const line of lines) {
       if (!line.trim()) continue;
-
       const event = JSON.parse(line) as StreamEvent;
-
-      if (event.type === 'chunk') {
-        callbacks.onChunk(event.text || '');
-        continue;
-      }
-
-      if (event.type === 'done') {
-        callbacks.onDone?.(event.relatedLinks || []);
-        continue;
-      }
-
-      if (event.type === 'error') {
-        throw new Error(event.message || 'Erro desconhecido no streaming da IA.');
-      }
+      if (event.type === 'chunk') { callbacks.onChunk(event.text || ''); continue; }
+      if (event.type === 'done') { callbacks.onDone?.(event.relatedLinks || []); continue; }
+      if (event.type === 'error') throw new Error(event.message || 'Erro desconhecido no streaming da IA.');
     }
   }
 

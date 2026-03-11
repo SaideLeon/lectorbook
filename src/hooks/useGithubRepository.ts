@@ -1,3 +1,7 @@
+// src/hooks/useGithubRepository.ts
+// Alteração: AnalyzeRepositoryFn agora aceita repoFullName opcional (2º parâmetro)
+// para que a ingestão no Supabase saiba em qual repositório filtrar.
+
 import { useState, useCallback, startTransition, useRef, useEffect } from 'react';
 import { FileNode } from '@/types';
 import { githubApi } from '@/services/github.api';
@@ -6,7 +10,11 @@ const TEACHING_DOC_REGEX = /\.(md|txt)$/i;
 const MAX_TEACHING_DOCS = 15;
 const REPO_UPDATE_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
-type AnalyzeRepositoryFn = (files: { path: string, content: string }[]) => Promise<string>;
+// Adicionado repoFullName opcional como 2º parâmetro
+type AnalyzeRepositoryFn = (
+  files: { path: string; content: string }[],
+  repoFullName?: string,
+) => Promise<string>;
 
 export function useGithubRepository(onRepositoryUpdated?: () => void) {
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
@@ -16,20 +24,18 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setErrorRaw] = useState<string | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedFile, setSelectedFile] = useState<{ path: string, content: string } | null>(null);
-  const [teachingDocs, setTeachingDocs] = useState<{ path: string, content: string }[]>([]);
+  const [selectedFile, setSelectedFile] = useState<{ path: string; content: string } | null>(null);
+  const [teachingDocs, setTeachingDocs] = useState<{ path: string; content: string }[]>([]);
   const [headSha, setHeadSha] = useState<string | null>(null);
   const analysisFnRef = useRef<AnalyzeRepositoryFn | null>(null);
-  
+
   // History
-  const [fileHistory, setFileHistory] = useState<{ path: string, content: string }[]>([]);
+  const [fileHistory, setFileHistory] = useState<{ path: string; content: string }[]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
 
   const setError = useCallback((msg: string | null, duration = 5000) => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-
     setErrorRaw(msg);
-
     if (msg && duration > 0) {
       errorTimerRef.current = setTimeout(() => setErrorRaw(null), duration);
     }
@@ -42,7 +48,7 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
   const analyzeRepository = useCallback(async (
     url: string,
     performAnalysis: AnalyzeRepositoryFn,
-    options?: { silent?: boolean }
+    options?: { silent?: boolean },
   ) => {
     if (!options?.silent) setIsLoading(true);
     setError(null);
@@ -50,37 +56,37 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
     setTeachingDocs([]);
     setRepoDescription(null);
     analysisFnRef.current = performAnalysis;
-    
+
     try {
       const cleanUrl = url.replace(/\.git\/?$/, '').replace(/\/$/, '');
       const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
       if (!match) throw new Error('URL do GitHub inválida. Use o formato: https://github.com/usuario/repo');
       const [, owner, repo] = match;
+      const repoFullName = `${owner}/${repo}`;
 
       const treeData = await githubApi.getTree(owner, repo);
       const allNodes = treeData.tree;
-      
-      startTransition(() => {
-        setFiles(allNodes);
-      });
+
+      startTransition(() => { setFiles(allNodes); });
 
       const currentBranch = treeData.branch || 'main';
       const currentHeadSha = treeData.headSha || null;
       setBranch(currentBranch);
       setHeadSha(currentHeadSha);
       setRepoDescription(treeData.description || null);
-      
-      // Inicial: mantém análise rápida com arquivos prioritários de código/configuração
-      const priorityFiles = allNodes.filter((f) => 
-        f.type === 'blob' && f.path.match(/(README|package\.json|tsconfig\.json|src\/main|src\/App|server\.ts|\.py|\.js|\.tsx)$/i)
+
+      const priorityFiles = allNodes.filter((f) =>
+        f.type === 'blob' &&
+        f.path.match(/(README|package\.json|tsconfig\.json|src\/main|src\/App|server\.ts|\.py|\.js|\.tsx)$/i),
       ).slice(0, 5);
 
-      const fileContents = await Promise.all(priorityFiles.map(async (f) => {
-        const content = await githubApi.getFileContent(owner, repo, f.path, currentBranch);
-        return { path: f.path, content };
-      }));
+      const fileContents = await Promise.all(
+        priorityFiles.map(async (f) => ({
+          path: f.path,
+          content: await githubApi.getFileContent(owner, repo, f.path, currentBranch),
+        })),
+      );
 
-      // Carrega automaticamente documentação .md/.txt para suporte ao chat docente
       const docFiles = allNodes
         .filter((f) => f.type === 'blob' && TEACHING_DOC_REGEX.test(f.path))
         .slice(0, MAX_TEACHING_DOCS);
@@ -88,8 +94,8 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
       const docsLoaded = await Promise.allSettled(
         docFiles.map(async (f) => ({
           path: f.path,
-          content: await githubApi.getFileContent(owner, repo, f.path, currentBranch)
-        }))
+          content: await githubApi.getFileContent(owner, repo, f.path, currentBranch),
+        })),
       );
 
       const availableDocs = docsLoaded
@@ -99,8 +105,9 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
 
       setTeachingDocs(availableDocs);
 
-      await performAnalysis([...fileContents, ...availableDocs]);
-      
+      // Passa repoFullName para que useAIChat possa usá-lo na ingestão e no filtro
+      await performAnalysis([...fileContents, ...availableDocs], repoFullName);
+
       return { owner, repo, allFiles: allNodes, branch: currentBranch };
     } catch (err) {
       console.error(err);
@@ -122,7 +129,6 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
       try {
         const latestHeadSha = await githubApi.getHeadSha(owner, repo, branch);
         if (latestHeadSha === headSha || !analysisFnRef.current) return;
-
         githubApi.clearCache();
         onRepositoryUpdated?.();
         await analyzeRepository(repoUrl, analysisFnRef.current, { silent: true });
@@ -137,7 +143,6 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
 
   const selectFile = useCallback(async (path: string) => {
     if (!repoUrl) return;
-    
     if (selectedFile && selectedFile.path === path) return;
 
     try {
@@ -147,15 +152,14 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
       const [, owner, repo] = match;
 
       const content = await githubApi.getFileContent(owner, repo, path, branch);
-      
       const newFile = { path, content };
       setSelectedFile(newFile);
-      
+
       const newHistory = fileHistory.slice(0, currentHistoryIndex + 1);
       newHistory.push(newFile);
       setFileHistory(newHistory);
       setCurrentHistoryIndex(newHistory.length - 1);
-      
+
       return newFile;
     } catch (err) {
       console.error(err);
@@ -207,6 +211,6 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
     navigateForward,
     clearRepository,
     setSelectedFile,
-    setError
+    setError,
   };
 }
