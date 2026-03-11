@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lectorbook-v1';
+const CACHE_NAME = 'lectorbook-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -17,6 +17,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
