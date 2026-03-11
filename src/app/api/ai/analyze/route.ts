@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { jsonError } from '@/app/api/_utils';
+import { buildRelevantContext } from '@/server/semantic-search';
 
 export const runtime = 'nodejs';
 
@@ -8,7 +9,12 @@ export async function POST(req: NextRequest) {
   try {
     const { prompt, contextFiles, apiKey } = await req.json();
     const ai = getAIClient(apiKey);
-    const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
+    const { renderedContext: fileContext, selectedChunks } = await buildRelevantContext({
+      query: prompt || 'Explique o conteúdo do repositório',
+      contextFiles: contextFiles || [],
+      apiKey,
+      maxChunks: 10,
+    });
     const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
       dateStyle: 'full',
       timeStyle: 'long',
@@ -25,8 +31,9 @@ export async function POST(req: NextRequest) {
       Quando houver perguntas de tempo, cronograma, prazo, 
 datas, duração ou "agora", use esta referência de Moçambique explicitamente.
 
-      Aqui está o conteúdo de um repositório GitHub:
+      Aqui estão os trechos recuperados por busca semântica do repositório GitHub:
       ${fileContext}
+      Total de trechos selecionados: ${selectedChunks.length}.
       ${prompt ? `Solicitação do usuário: ${prompt}` : 'Explique de forma didática o material disponível.'}
 
       Diretrizes:
@@ -35,10 +42,11 @@ datas, duração ou "agora", use esta referência de Moçambique explicitamente.
       3. Destaque os conceitos mais importantes que o aluno precisa entender primeiro.
       4. Aponte dúvidas comuns que um aluno pode ter e esclareça cada uma.
       5. Se houver pergunta específica, responda em detalhe com abordagem didática.
-      6. Considere que os documentos de referência estarão em arquivos .md e .txt no GitHub.
+      6. Considere que os documentos de referência recuperados vêm de arquivos .md e .txt no GitHub.
       7. Nunca comece com frases de apresentação, saudação ou explicação do seu papel; inicie diretamente pela explicação do módulo/conteúdo.
 
       IMPORTANTE: responda em Português (pt-BR) e formate em Markdown.
+      Se o contexto recuperado não for suficiente, sinalize a limitação de forma transparente.
     `;
 
     try {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { jsonError } from '@/app/api/_utils';
+import { buildRelevantContext } from '@/server/semantic-search';
 
 export const runtime = 'nodejs';
 
@@ -8,7 +9,12 @@ export async function POST(req: NextRequest) {
   try {
     const { contextFiles, context, apiKey } = await req.json();
     const ai = getAIClient(apiKey);
-    const fileContext = (contextFiles || []).map((f: any) => `--- ${f.path} ---\n${f.content}\n`).join('\n');
+    const { renderedContext: fileContext, selectedChunks } = await buildRelevantContext({
+      query: `${context || ''}\nplano de estudo e execução`,
+      contextFiles: contextFiles || [],
+      apiKey,
+      maxChunks: 12,
+    });
     const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
       dateStyle: 'full',
       timeStyle: 'long',
@@ -27,8 +33,9 @@ export async function POST(req: NextRequest) {
       Contexto de entrada:
       ${context}
 
-      Materiais do repositório:
+      Materiais do repositório (recuperados por busca semântica):
       ${fileContext}
+      Total de trechos selecionados: ${selectedChunks.length}.
 
       Inclua com detalhes:
       1) Visão geral dos materiais e objetivos de aprendizagem
@@ -38,12 +45,13 @@ export async function POST(req: NextRequest) {
       5) Diretrizes práticas de aplicação
       6) Tarefas explícitas para o próximo ciclo de estudo
       7) Riscos, dificuldades previstas e mitigação
-      8) Considerações sobre documentos em formato .md e .txt no GitHub, com foco em explicação para alunos
+      8) Considerações sobre documentos em formato .md e .txt no GitHub, usando apenas os trechos recuperados por busca semântica
       9) Texto direto ao ponto: sem saudações, sem apresentação pessoal e sem explicação da função do assistente
       10) Estruture o conteúdo para exportação em PDF de alta qualidade, usando tabelas quando fizer sentido para organizar dados
       11) Em qualquer menção de prazo, agenda, data e hora, use explicitamente o fuso horário de Moçambique (Africa/Maputo)
 
       IMPORTANTE: responda em Português (pt-BR) e em Markdown estruturado.
+      Se os trechos recuperados forem insuficientes, aponte a limitação antes de sugerir próximos passos.
     `;
 
     try {
