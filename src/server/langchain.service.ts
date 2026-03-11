@@ -16,7 +16,6 @@
 
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
-import { SupabaseChatMessageHistory } from '@langchain/community/stores/message/supabase';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { Document } from '@langchain/core/documents';
 import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
@@ -74,6 +73,52 @@ function getVectorStore(apiKey?: string): SupabaseVectorStore {
     tableName: 'documents',
     queryName: 'match_documents',
   });
+}
+
+type PersistedChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+class SupabaseChatMessageHistory {
+  constructor(
+    private readonly options: {
+      client: SupabaseClient;
+      tableName: string;
+      sessionId: string;
+    },
+  ) {}
+
+  async addMessage(message: BaseMessage): Promise<void> {
+    const normalizedMessage = this.normalizeMessage(message);
+    if (!normalizedMessage) return;
+
+    const { error } = await this.options.client.from(this.options.tableName).insert({
+      session_id: this.options.sessionId,
+      message: normalizedMessage,
+    });
+
+    if (error) {
+      throw new Error(`Falha ao salvar mensagem no Supabase: ${error.message}`);
+    }
+  }
+
+  private normalizeMessage(message: BaseMessage): PersistedChatMessage | null {
+    if (message instanceof HumanMessage) {
+      return { role: 'user', content: this.getContentAsString(message.content) };
+    }
+
+    if (message instanceof AIMessage) {
+      return { role: 'assistant', content: this.getContentAsString(message.content) };
+    }
+
+    return null;
+  }
+
+  private getContentAsString(content: BaseMessage['content']): string {
+    if (typeof content === 'string') return content;
+    return JSON.stringify(content);
+  }
 }
 
 // ─── Splitter (configuração RAG.txt) ─────────────────────────────────────────
