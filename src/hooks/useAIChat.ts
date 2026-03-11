@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnalysisMessage } from '@/types';
 import {
-  analyzeCode,
   thinkAndSuggestStream,
   generateReadingSheet as generateReadingSheetService,
   transcribeAudio,
@@ -141,29 +140,17 @@ export function useAIChat() {
       // Guarda o repo atual para passar nas próximas queries
       if (repoFullName) setCurrentRepoFullName(repoFullName);
 
-      const limitedFiles = files.map((f) => ({
-        path: f.path,
-        content: limitTextContext(f.content),
-      }));
-
-      const aiRes = await analyzeCode(limitedFiles, undefined, activeKey);
-      const analysisText = getResponseText(aiRes);
-
-      if (!analysisText) {
-        throw new Error('A resposta da IA veio vazia. Verifique os logs do servidor.');
-      }
+      const analysisText = 'Contexto inicial preparado. Faça sua pergunta para iniciar a tutoria.';
 
       setAnalysis(analysisText);
       setChatHistory([{
         role: 'model',
         content: analysisText,
         timestamp: Date.now(),
-        relatedLinks: aiRes.candidates?.[0]?.groundingMetadata?.groundingChunks
-          ?.map((c: any) => ({ title: c.web?.title || 'Fonte', url: c.web?.uri }))
-          .filter((l: any): l is { title: string; url: string } => !!l.url) || [],
+        relatedLinks: [],
       }]);
 
-      // Fire-and-forget: ingere os .md/.txt no Supabase após análise bem-sucedida
+      // Pré-carrega apenas os documentos para busca semântica.
       if (repoFullName) {
         const docFiles = files.filter((f) => /\.(md|txt)$/i.test(f.path));
         if (docFiles.length > 0) {
@@ -173,7 +160,7 @@ export function useAIChat() {
 
       return analysisText;
     } catch (error) {
-      console.error('AI Analysis Error:', error);
+      console.error('Erro ao preparar contexto inicial:', error);
       throw error;
     }
   }, [getNextKey, ingestRepoFiles]);

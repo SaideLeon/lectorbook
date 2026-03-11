@@ -2,11 +2,11 @@
  * src/app/api/ai/think/route.ts
  *
  * Rota de chat com streaming.
- * Fallback automático: Gemini → Gemini Flash (429) → Groq (500/503/network errors)
+ * Modelo principal: Groq.
+ * Google é usado apenas no pipeline de busca semântica (embeddings), via semantic-search.
  */
 
 import { NextRequest } from 'next/server';
-import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { groqChatStream } from '@/server/groq.service';
 import { jsonError } from '@/app/api/_utils';
 import { buildRelevantContext, createSearchQuery } from '@/server/semantic-search';
@@ -17,41 +17,6 @@ type GroqMessage = {
 };
 
 export const runtime = 'nodejs';
-
-// ─── Helper: extrai texto de um chunk Gemini ─────────────────────────────────
-
-function getChunkText(chunk: any): string {
-  if (!chunk) return '';
-  if (typeof chunk.text === 'string') return chunk.text;
-  return (
-    chunk?.candidates?.[0]?.content?.parts?.find(
-      (p: any) => typeof p?.text === 'string',
-    )?.text || ''
-  );
-}
-
-// ─── Códigos de erro que disparam o fallback para o Groq ─────────────────────
-//
-// 429 → já tem fallback para gemini-flash (mantido)
-// 500, 503 → Gemini com problema → vai para Groq
-// Erros de rede/timeout → vai para Groq
-
-function shouldFallbackToGroq(error: any): boolean {
-  const status = error?.status ?? error?.code;
-  if (status === 500 || status === 503) return true;
-  // Erros de rede comuns
-  const msg: string = error?.message ?? '';
-  if (
-    msg.includes('fetch failed') ||
-    msg.includes('ECONNRESET') ||
-    msg.includes('ETIMEDOUT') ||
-    msg.includes('network') ||
-    msg.includes('503') ||
-    msg.includes('500')
-  )
-    return true;
-  return false;
-}
 
 // ─── Handler principal ────────────────────────────────────────────────────────
 
@@ -99,49 +64,7 @@ export async function POST(req: NextRequest) {
 
     const encoder = new TextEncoder();
 
-    // ── Tenta Gemini primeiro ──────────────────────────────────────────────
-    const tryGemini = async (useGeminiStream: any): Promise<ReadableStream | null> => {
-      return new ReadableStream({
-        async start(controller) {
-          const links = new Map<string, { title: string; url: string }>();
-          try {
-            for await (const chunk of useGeminiStream as any) {
-              const text = getChunkText(chunk);
-              if (text) {
-                controller.enqueue(
-                  encoder.encode(`${JSON.stringify({ type: 'chunk', text })}\n`),
-                );
-              }
-              const groundingChunks =
-                chunk?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-              for (const g of groundingChunks) {
-                const url = g?.web?.uri;
-                if (url) links.set(url, { title: g?.web?.title || 'Fonte', url });
-              }
-            }
-            controller.enqueue(
-              encoder.encode(
-                `${JSON.stringify({ type: 'done', relatedLinks: Array.from(links.values()) })}\n`,
-              ),
-            );
-            controller.close();
-          } catch (err) {
-            controller.enqueue(
-              encoder.encode(
-                `${JSON.stringify({
-                  type: 'error',
-                  message: err instanceof Error ? err.message : 'Erro no streaming Gemini.',
-                })}\n`,
-              ),
-            );
-            controller.close();
-          }
-        },
-      });
-    };
-
-    // ── Tenta Groq como fallback ──────────────────────────────────────────
-    const tryGroq = (): ReadableStream => {
+    const streamFromGroq = (): ReadableStream => {
       // Converte o histórico para o formato Groq (OpenAI-compatible)
       const groqMessages: GroqMessage[] = [
         {
@@ -171,7 +94,6 @@ export async function POST(req: NextRequest) {
               );
             },
             onDone() {
-              // Groq não retorna grounding links — envia done sem links
               controller.enqueue(
                 encoder.encode(
                   `${JSON.stringify({ type: 'done', relatedLinks: [] })}\n`,
@@ -198,70 +120,7 @@ export async function POST(req: NextRequest) {
       Connection: 'keep-alive',
     };
 
-    // ── 1. Tenta ANALYST_MODEL (Gemini Pro) ───────────────────────────────
-    // Se não houver GEMINI_API_KEY, usa Groq como modelo principal.
-    let ai;
-    try {
-      ai = getAIClient(apiKey);
-    } catch (clientError: any) {
-      if (clientError?.message?.includes('GEMINI_API_KEY is not set')) {
-        return new Response(tryGroq(), { headers: streamHeaders });
-      }
-      throw clientError;
-    }
-
-    const contents = [
-      { role: 'user', parts: [{ text: `Contexto geral: ${context}` }] },
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `Trechos recuperados por busca semântica nos arquivos .md/.txt:\n${docsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunks.length}.`,
-          },
-        ],
-      },
-      ...(history || []).map((h: any) => ({
-        role: h.role === 'user' ? 'user' : 'model',
-        parts: [{ text: h.content }],
-      })),
-      { role: 'user', parts: [{ text: currentInput }] },
-    ];
-
-    const streamConfig = { systemInstruction, tools: [{ googleSearch: {} }] };
-
-    try {
-      const geminiStream = await ai.models.generateContentStream({
-        model: ANALYST_MODEL,
-        contents,
-        config: streamConfig,
-      });
-      return new Response(await tryGemini(geminiStream), { headers: streamHeaders });
-    } catch (primaryError: any) {
-      // ── 2. 429 → tenta Gemini Flash ────────────────────────────────────
-      if (primaryError?.status === 429 || primaryError?.message?.includes('429')) {
-        try {
-          const fallbackStream = await ai.models.generateContentStream({
-            model: FALLBACK_MODEL,
-            contents,
-            config: { systemInstruction },
-          });
-          return new Response(await tryGemini(fallbackStream), { headers: streamHeaders });
-        } catch (flashError: any) {
-          // Flash também falhou — vai para Groq
-          if (shouldFallbackToGroq(flashError)) {
-            return new Response(tryGroq(), { headers: streamHeaders });
-          }
-          throw flashError;
-        }
-      }
-
-      // ── 3. 500 / 503 / rede → vai direto para Groq ─────────────────────
-      if (shouldFallbackToGroq(primaryError)) {
-        return new Response(tryGroq(), { headers: streamHeaders });
-      }
-
-      throw primaryError;
-    }
+    return new Response(streamFromGroq(), { headers: streamHeaders });
   } catch (error) {
     return jsonError(error);
   }
