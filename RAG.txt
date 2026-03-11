@@ -1,0 +1,435 @@
+Para integrar o Supabase (como Vector Store) com o Google Gemini (text-embedding-004) usando LangChain.js, siga estes passos:
+1. Instalação das Dependências
+
+npm install @langchain/google-genai @langchain/community @supabase/supabase-js
+
+2. Configuração da Tabela no Supabase (SQL)
+Execute este comando no SQL Editor do Supabase para criar a função de busca necessária para o LangChain:
+
+-- Ativar a extensão de vetorescreate extension if not exists vector;
+-- Criar a tabela para armazenar documentoscreate table documents (
+  id bigserial primary key,
+  content text, -- corresponde ao pageContent no LangChain
+  metadata jsonb, -- corresponde ao metadata no LangChain
+  embedding vector(768) -- dimensão do text-embedding-004
+);
+-- Criar a função de busca (RPC) que o LangChain utilizacreate or replace function match_documents (
+  query_embedding vector(768),
+  match_count int DEFAULT null,
+  filter jsonb DEFAULT '{}'
+) returns table (
+  id bigint,
+  content text,
+  metadata jsonb,
+  similarity float
+)language plpgsqlas $$begin
+  return query
+  select
+    documents.id,
+    documents.content,
+    documents.metadata,
+    1 - (documents.embedding <=> query_embedding) as similarity
+  from documents
+  where documents.metadata @> filter
+  order by documents.embedding <=> query_embedding
+  limit match_count;end;
+$$;
+
+3. Implementação em TypeScript
+O LangChain simplifica a criação e a busca:
+
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";import { createClient } from "@supabase/supabase-js";import { TaskType } from "@google/generative-ai";
+// 1. Configuração dos Clientesconst supabaseClient = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+const embeddings = new GoogleGenerativeAIEmbeddings({
+  apiKey: process.env.GOOGLE_API_KEY,
+  modelName: "text-embedding-004",
+  taskType: TaskType.RETRIEVAL_DOCUMENT,
+});
+async function gerirConhecimento() {
+  // 2. Inicializar o Vector Store
+  const vectorStore = new SupabaseVectorStore(embeddings, {
+    client: supabaseClient,
+    tableName: "documents",
+    queryName: "match_documents", // Nome da função RPC criada no SQL
+  });
+
+  // 3. Adicionar Documentos (O LangChain gera o embedding e salva no DB automaticamente)
+  await vectorStore.addDocuments([
+    { pageContent: "O Supabase é uma alternativa open source ao Firebase.", metadata: { category: "tech" } },
+    { pageContent: "O café ajuda na concentração durante o código.", metadata: { category: "food" } },
+  ]);
+
+  // 4. Realizar Busca Semântica
+  const query = "O que é o Supabase?";
+  const results = await vectorStore.similaritySearch(query, 1);
+
+  console.log(results[0].pageContent);
+}
+
+gerirConhecimento();
+
+Por que usar LangChain aqui?
+
+* Abstração: O LangChain recebe o texto, chama a API do Google e envia para o Supabase num único comando (addDocuments).
+* Integração: Facilita a criação de uma Chain de RAG (onde você recupera o documento e já o envia para um Chat Model responder ao usuário).
+* Metadados: Ele gerencia automaticamente a coluna metadata como JSON, permitindo filtros complexos na busca.
+
+
+Para fazer o ChatBot consumir os vetores, você precisa implementar o padrão RAG (Retrieval-Augmented Generation). O fluxo é:
+
+   1. Gerar o embedding da pergunta do usuário.
+   2. Buscar os textos mais parecidos no Supabase.
+   3. Injetar esses textos no contexto (prompt) da Groq.
+
+Aqui está o código completo em TypeScript:
+
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";import { createClient } from "@supabase/supabase-js";import Groq from "groq-sdk";
+// 1. Configuraçõesconst groq = new Groq({ apiKey: process.env.GROQ_API_KEY });const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+const embeddingsModel = new GoogleGenerativeAIEmbeddings({
+  apiKey: process.env.GOOGLE_API_KEY,
+  modelName: "text-embedding-004",
+});
+async function chatComContexto(perguntaUsuario: string) {
+  // 2. Gerar embedding da pergunta
+  const queryEmbedding = await embeddingsModel.embedQuery(perguntaUsuario);
+
+  // 3. Buscar no Supabase via RPC (função match_documents que criamos antes)
+  const { data: documentos, error } = await supabase.rpc("match_documents", {
+    query_embedding: queryEmbedding,
+    match_count: 3, // Trazer os 3 parágrafos mais relevantes
+  });
+
+  if (error) throw error;
+
+  // 4. Montar o contexto textual
+  const contexto = documentos.map((d: any) => d.content).join("\n\n");
+
+  // 5. Enviar para a Groq com o contexto injetado
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile", // Ou o modelo da sua preferência na Groq
+    messages: [
+      {
+        role: "system",
+        content: `Tu és um assistente útil. Usa o seguinte contexto para responder à pergunta do utilizador de forma precisa. 
+        Se não souberes a resposta com base no contexto, diz que não tens essa informação.
+        
+        CONTEXTO:
+        ${contexto}`
+      },
+      {
+        role: "user",
+        content: perguntaUsuario
+      }
+    ],
+    temperature: 0.5, // Menor temperatura para evitar alucinações em RAG
+  });
+
+  console.log("Resposta da IA:", completion.choices[0].message.content);
+}
+
+chatComContexto("Como configuro o storage no Supabase?");
+
+O que mudou aqui?
+
+* System Prompt: Adicionamos uma instrução "invisível" para a IA, fornecendo os dados recuperados do banco de dados como a única fonte da verdade.
+* Prompt Dinâmico: A pergunta do usuário não vai sozinha; ela vai acompanhada dos pedaços de texto que o seu banco de vetores encontrou.
+* Métrica de Similaridade: O Supabase seleciona os textos que têm a menor "distância" semântica da pergunta, garantindo que o bot não receba lixo.
+
+Deseja saber como manter o histórico da conversa (memória) para que o bot se lembre do que foi dito antes nessas buscas?
+
+Para manter o histórico em sistemas RAG, não basta enviar as mensagens anteriores. É necessário um passo extra: Re-escrever a pergunta do utilizador para que ela faça sentido sozinha antes de pesquisar no banco de vetores.
+Se o utilizador pergunta "Como instalo?" e depois "E como configuro isso?", o termo "isso" falharia na busca vetorial se não soubermos que ele se refere ao Supabase.
+Aqui está como implementar essa memória com LangChain e Groq em TypeScript:
+1. Instalação
+
+npm install langchain @langchain/google-genai @langchain/community
+
+2. Implementação com Memória e Re-escrita
+Este código utiliza o ChatPromptTemplate para gerir o histórico e injetar o contexto.
+
+import { ChatGroq } from "@langchain/groq";import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";import { createClient } from "@supabase/supabase-js";import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";import { createRetrievalChain } from "langchain/chains/retrieval";import { createStuffDocumentsChain } from "langchain/chains/combine_documents";import { HumanMessage, AIMessage } from "@langchain/core/messages";
+const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+// 1. Modelosconst model = new ChatGroq({ apiKey: process.env.GROQ_API_KEY, modelName: "llama-3.3-70b-versatile" });const embeddings = new GoogleGenerativeAIEmbeddings({ apiKey: process.env.GOOGLE_API_KEY, modelName: "text-embedding-004" });
+// 2. Vector Storeconst vectorStore = new SupabaseVectorStore(embeddings, {
+  client: supabaseClient,
+  tableName: "documents",
+  queryName: "match_documents",
+});
+async function chatbotComMemoria() {
+  const retriever = vectorStore.asRetriever();
+
+  // 3. Prompt para Re-escrever a pergunta (considerando o histórico)
+  const rephrasePrompt = ChatPromptTemplate.fromMessages([
+    new MessagesPlaceholder("chat_history"),
+    ["user", "{input}"],
+    ["user", "Com base na conversa acima, formula uma pergunta de pesquisa autónoma que possa ser usada para procurar informações relevantes."],
+  ]);
+
+  const historyAwareRetriever = await createHistoryAwareRetriever({
+    llm: model,
+    retriever,
+    rephrasePrompt,
+  });
+
+  // 4. Prompt Final (Sistema + Contexto + Resposta)
+  const qaPrompt = ChatPromptTemplate.fromMessages([
+    ["system", "Responde à pergunta do utilizador usando apenas o contexto fornecido abaixo:\n\n{context}"],
+    new MessagesPlaceholder("chat_history"),
+    ["user", "{input}"],
+  ]);
+
+  const combineDocsChain = await createStuffDocumentsChain({
+    llm: model,
+    prompt: qaPrompt,
+  });
+
+  // 5. A Chain Final
+  const ragChain = await createRetrievalChain({
+    retriever: historyAwareRetriever,
+    combineDocsChain,
+  });
+
+  // Exemplo de uso com histórico
+  const chatHistory = [
+    new HumanMessage("O que é o Supabase?"),
+    new AIMessage("O Supabase é uma alternativa open-source ao Firebase baseada em PostgreSQL."),
+  ];
+
+  const response = await ragChain.invoke({
+    chat_history: chatHistory,
+    input: "Como faço para instalar?", // A IA saberá que se refere ao Supabase
+  });
+
+  console.log("Resposta:", response.answer);
+}
+
+chatbotComMemoria();
+
+O que acontece nos bastidores:
+
+   1. Rephrasing: O modelo da Groq lê o histórico e transforma "Como faço para instalar?" em "Como instalar o SDK do Supabase?".
+   2. Retrieval: O text-embedding-004 gera o vetor da pergunta transformada e procura no Supabase.
+   3. Generation: O modelo final recebe os documentos do banco de dados + o histórico real e gera a resposta para o utilizador.
+
+Deseja saber como persistir esse histórico de mensagens no próprio Supabase para que o chat continue noutra sessão?
+
+Para persistir o histórico no Supabase, a forma mais eficiente com LangChain é utilizar a classe SupabaseChatMessageHistory. Isto armazena cada mensagem (User/AI) numa tabela, associada a um session_id.
+1. Criar a Tabela de Histórico (SQL)
+Execute este comando no SQL Editor do Supabase:
+
+create table if not exists chat_messages (
+  id bigserial primary key,
+  session_id uuid not null,
+  message jsonb not null, -- Armazena o tipo (human/ai) e o texto
+  created_at timestamptz default now()
+);
+
+2. Implementação em TypeScript
+
+import { SupabaseChatMessageHistory } from "@langchain/community/stores/message/supabase";import { createClient } from "@supabase/supabase-js";
+const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+async function chatPersistente(sessionId: string, inputUsuario: string) {
+  // 1. Inicializa o armazenamento de mensagens no banco
+  const messageHistory = new SupabaseChatMessageHistory({
+    client,
+    tableName: "chat_messages",
+    sessionId: sessionId, // ID único por utilizador ou conversa
+  });
+
+  // 2. Recupera mensagens anteriores do banco
+  const history = await messageHistory.getMessages();
+
+  // 3. (Lógica da Chain aqui - enviando 'history' para o modelo da Groq)
+  // Exemplo simplificado de resposta da IA:
+  const respostaIA = "O Supabase usa Postgres para vetores.";
+
+  // 4. Salva a nova interação no banco automaticamente
+  await messageHistory.addMessage({ content: inputUsuario, role: "user" });
+  await messageHistory.addMessage({ content: respostaIA, role: "assistant" });
+
+  console.log("Histórico atualizado no Supabase!");
+}
+// Chame com um ID fixo para testar a persistência
+chatPersistente("sessao-cliente-123", "Onde os vetores ficam?");
+
+Por que isto é melhor?
+
+* Sessões Infinitas: O utilizador pode fechar o browser e, ao voltar com o mesmo sessionId, o bot lembrará de tudo.
+* Escalabilidade: Não gasta memória RAM do seu servidor guardando variáveis de histórico.
+* Auditoria: Tem um log completo de todas as conversas dos seus utilizadores em SQL.
+
+Queres que eu ajude a unificar tudo (Embeddings + Groq + Persistência) num único Endpoint de API (Express ou Next.js)?
+
+Aqui tens a implementação completa de uma Route Handler (API) em Next.js (App Router).
+Esta rota faz tudo: recupera o histórico do Supabase, usa a Groq para processar a lógica RAG com Google Embeddings e guarda a nova interação.
+1. Estrutura da Base de Dados (SQL)
+Certifica-te de que tens as tabelas documents (com os teus dados) e chat_messages (para o histórico) criadas no Supabase, conforme os passos anteriores.
+2. A API Route (app/api/chat/route.ts)
+
+import { NextRequest, NextResponse } from "next/server";import { ChatGroq } from "@langchain/groq";import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";import { SupabaseChatMessageHistory } from "@langchain/community/stores/message/supabase";import { createClient } from "@supabase/supabase-js";import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";import { createRetrievalChain } from "langchain/chains/retrieval";import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
+export async function POST(req: NextRequest) {
+  try {
+    const { message, sessionId } = await req.json();
+
+    if (!message || !sessionId) {
+      return NextResponse.json({ error: "Missing data" }, { status: 400 });
+    }
+
+    // 1. Clientes
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const model = new ChatGroq({
+      apiKey: process.env.GROQ_API_KEY,
+      modelName: "llama-3.3-70b-versatile",
+      temperature: 0.3,
+    });
+
+    const embeddings = new GoogleGenerativeAIEmbeddings({
+      apiKey: process.env.GOOGLE_API_KEY,
+      modelName: "text-embedding-004",
+    });
+
+    // 2. Histórico Persistente
+    const chatHistory = new SupabaseChatMessageHistory({
+      client: supabase,
+      tableName: "chat_messages",
+      sessionId: sessionId,
+    });
+
+    // 3. Vector Store (Busca de Conhecimento)
+    const vectorStore = new SupabaseVectorStore(embeddings, {
+      client: supabase,
+      tableName: "documents",
+      queryName: "match_documents",
+    });
+
+    // 4. Configurar Chain de Re-escrita (Contextualização)
+    const historyAwareRetriever = await createHistoryAwareRetriever({
+      llm: model,
+      retriever: vectorStore.asRetriever(),
+      rephrasePrompt: ChatPromptTemplate.fromMessages([
+        new MessagesPlaceholder("chat_history"),
+        ["user", "{input}"],
+        ["user", "Dada a conversa acima, reformula a pergunta para que possa ser pesquisada sem contexto."],
+      ]),
+    });
+
+    // 5. Configurar Chain de Resposta
+    const qaChain = await createStuffDocumentsChain({
+      llm: model,
+      prompt: ChatPromptTemplate.fromMessages([
+        ["system", "És um assistente especializado. Usa este contexto para responder:\n\n{context}"],
+        new MessagesPlaceholder("chat_history"),
+        ["user", "{input}"],
+      ]),
+    });
+
+    const ragChain = await createRetrievalChain({
+      retriever: historyAwareRetriever,
+      combineDocsChain: qaChain,
+    });
+
+    // 6. Executar e Salvar
+    const pastMessages = await chatHistory.getMessages();
+    const response = await ragChain.invoke({
+      chat_history: pastMessages,
+      input: message,
+    });
+
+    // Guardar interação no banco
+    await chatHistory.addMessage({ content: message, role: "user" } as any);
+    await chatHistory.addMessage({ content: response.answer, role: "assistant" } as any);
+
+    return NextResponse.json({ answer: response.answer });
+
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+3. Como testar no Frontend
+Podes chamar esta API de qualquer componente React:
+
+const sendMessage = async (text: string) => {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    body: JSON.stringify({ 
+      message: text, 
+      sessionId: "user-unique-id-123" // Mantém o mesmo ID para a mesma conversa
+    }),
+  });
+  const data = await res.json();
+  console.log("IA diz:", data.answer);
+};
+
+Pontos Chave:
+
+* Segurança: Usa o SERVICE_ROLE_KEY no servidor para permitir que o LangChain escreva no banco, mas nunca exponhas esta chave no frontend.
+* Performance: Como estás a usar a Groq, a resposta será quase instantânea.
+* Escalabilidade: O Next.js trata cada pedido como uma Serverless Function, e o Supabase gere as ligações ao banco de dados.
+
+Precisas de ajuda para criar o script que faz o "upload" (ingestão) inicial dos teus ficheiros PDF ou textos para o Supabase?
+
+Para carregar os teus documentos (PDF, TXT ou JSON) para o Supabase, criamos um Script de Ingestão. Ele divide o texto em pedaços pequenos (chunks), gera os embeddings com o text-embedding-004 e guarda tudo no Postgres.
+1. Instala a dependência para PDFs
+
+npm install pdf-parse
+
+2. Script de Ingestão (scripts/ingest.ts)
+Podes correr este script localmente com npx ts-node scripts/ingest.ts.
+
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";import { createClient } from "@supabase/supabase-js";
+async function ingestDocs() {
+  // 1. Configurar Clientes
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const embeddings = new GoogleGenerativeAIEmbeddings({
+    apiKey: process.env.GOOGLE_API_KEY,
+    modelName: "text-embedding-004",
+  });
+
+  // 2. Carregar o PDF (ou outro ficheiro)
+  const loader = new PDFLoader("meu-documento.pdf"); // Substitui pelo teu ficheiro
+  const rawDocs = await loader.load();
+
+  // 3. Dividir em Chunks (importante para não exceder limites de contexto)
+  const splitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 1000,   // 1000 caracteres por pedaço
+    chunkOverlap: 200, // 200 caracteres de sobreposição para manter o contexto
+  });
+
+  const docs = await splitter.splitDocuments(rawDocs);
+  console.log(`Criados ${docs.length} pedaços de texto.`);
+
+  // 4. Enviar para o Supabase
+  console.log("A gerar embeddings e a guardar no Supabase...");
+  
+  await SupabaseVectorStore.fromDocuments(docs, embeddings, {
+    client: supabase,
+    tableName: "documents",
+    queryName: "match_documents",
+  });
+
+  console.log("Sucesso! O teu bot já pode consultar este conhecimento.");
+}
+
+ingestDocs().catch(console.error);
+
+Dicas Pro:
+
+* Chunking: Não ignores o chunkOverlap. Ele ajuda a IA a entender frases que foram cortadas a meio entre dois pedaços de texto.
+* Metadados: O PDFLoader adiciona automaticamente o número da página aos metadados. Na resposta do ChatBot, podes usar isto para dizer: "Segundo a página 5 do manual...".
+* Limpeza: Se fores re-ingestir os mesmos documentos, lembra-te de limpar a tabela documents no Supabase antes, para não teres respostas duplicadas.
+
+Queres que eu mostre como adicionar um filtro de metadados na API do Next.js para o bot pesquisar apenas em documentos específicos?
+
