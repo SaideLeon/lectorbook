@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server';
 import { ANALYST_MODEL, FALLBACK_MODEL, getAIClient } from '@/server/gemini.service';
 import { groqChatStream } from '@/server/groq.service';
 import { jsonError } from '@/app/api/_utils';
+import { buildRelevantContext, createSearchQuery } from '@/server/semantic-search';
 
 type GroqMessage = {
   role: 'user' | 'assistant';
@@ -70,9 +71,13 @@ export async function POST(req: NextRequest) {
       timeZone: 'Africa/Maputo',
     }).format(new Date());
 
-    const docsContext = (contextFiles as any[])
-      .map((f: any) => `--- ${f.path} ---\n${f.content}\n`)
-      .join('\n');
+    const retrievalQuery = createSearchQuery(currentInput || '', history || []);
+    const { renderedContext: docsContext, selectedChunks } = await buildRelevantContext({
+      query: retrievalQuery,
+      contextFiles: contextFiles || [],
+      apiKey,
+      maxChunks: 10,
+    });
 
     const systemInstruction = `
       Você é o Tutor de Leitura principal chamado "Lector".
@@ -83,11 +88,12 @@ export async function POST(req: NextRequest) {
       Processo de resposta:
       1. Explique de forma didática, em linguagem simples e objetiva.
       2. Use exemplos curtos quando necessário.
-      3. Considere que os documentos de referência estão em .md e .txt no GitHub.
+      3. Considere apenas o contexto recuperado por busca semântica nos documentos .md/.txt do GitHub.
       4. Finalize com uma pergunta para confirmar compreensão.
       5. Nunca comece com saudações — inicie diretamente pelo conteúdo.
 
       IMPORTANTE: responda sempre em Português (pt-BR), tom de docente.
+      Se o contexto recuperado não trouxer base suficiente, informe explicitamente a limitação antes de responder.
       Referência temporal: hora atual em Moçambique (Africa/Maputo): ${nowInMozambique}.
     `;
 
@@ -144,7 +150,7 @@ export async function POST(req: NextRequest) {
         },
         {
           role: 'user',
-          content: `Documentos .md/.txt disponíveis:\n${docsContext || 'Nenhum disponível.'}`,
+          content: `Trechos recuperados por busca semântica:\n${docsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunks.length}.`,
         },
         ...(history || []).map((h: any) => ({
           role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
@@ -210,7 +216,7 @@ export async function POST(req: NextRequest) {
         role: 'user',
         parts: [
           {
-            text: `Conteúdo automático dos arquivos .md/.txt:\n${docsContext || 'Nenhum disponível.'}`,
+            text: `Trechos recuperados por busca semântica nos arquivos .md/.txt:\n${docsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunks.length}.`,
           },
         ],
       },
