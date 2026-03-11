@@ -25,5 +25,6 @@ export interface AnalysisMessage {
   content: string;
   timestamp: number;
   isThinking?: boolean;
+  isSystemNotice?: boolean;
   relatedLinks?: { title: string; url: string }[];
 }

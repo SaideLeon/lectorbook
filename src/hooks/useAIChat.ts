@@ -148,6 +148,7 @@ export function useAIChat() {
         content: analysisText,
         timestamp: Date.now(),
         relatedLinks: [],
+        isSystemNotice: true,
       }]);
 
       // Pré-carrega apenas os documentos para busca semântica.
