@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, FileText, MessageSquare, Files, Eye, Menu, X as CloseIcon } from 'lucide-react';
+import { Loader2, FileText, MessageSquare, Files, Eye, Menu, X as CloseIcon, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Components
@@ -9,6 +9,7 @@ import { RepoInput } from '@/components/layout/RepoInput';
 import { FileTree } from '@/components/file-explorer/FileTree';
 import { FileViewer } from '@/components/file-explorer/FileViewer';
 import { ChatInterface } from '@/components/ai-chat/ChatInterface';
+import { QuizInterface } from '@/components/quiz/QuizInterface';
 
 // Hooks
 import { useGithubRepository } from '@/hooks/useGithubRepository';
@@ -16,13 +17,15 @@ import { useAIChat } from '@/hooks/useAIChat';
 
 import { useToast } from '@/components/ui/Toast';
 
-type MobileTab = 'files' | 'chat' | 'preview';
+type MobileTab = 'files' | 'chat' | 'preview' | 'quiz';
+type ActiveMode = 'chat' | 'quiz';
 
 export default function App() {
   const { showToast, hideToast } = useToast();
   const [maximizedPanel, setMaximizedPanel] = useState<'chat' | 'file' | null>(null);
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeMode, setActiveMode] = useState<ActiveMode>('chat');
 
   // Custom Hooks
   const handleRepositoryUpdated = useCallback(() => {
@@ -67,6 +70,13 @@ export default function App() {
     handleKeyFileUpload
   } = useAIChat();
 
+  // Reset quiz mode when repository is cleared
+  useEffect(() => {
+    if (!repoUrl) {
+      setActiveMode('chat');
+    }
+  }, [repoUrl]);
+
   // Effects
   useEffect(() => {
     if (!selectedFile && maximizedPanel === 'file') {
@@ -94,6 +104,7 @@ export default function App() {
 
   // Handlers
   const handleAnalyze = async (url: string) => {
+    setActiveMode('chat');
     await analyzeRepository(url, performInitialAnalysis);
     setActiveMobileTab('chat');
   };
@@ -121,6 +132,17 @@ export default function App() {
     }
   };
 
+  const handleOpenQuiz = () => {
+    setActiveMode('quiz');
+    setActiveMobileTab('quiz');
+    setIsSidebarOpen(false);
+  };
+
+  const handleBackToChat = () => {
+    setActiveMode('chat');
+    setActiveMobileTab('chat');
+  };
+
   const repositoryName = (() => {
     if (!repoUrl) return undefined;
     const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
@@ -133,6 +155,9 @@ export default function App() {
     setIsSidebarOpen(false);
     setActiveMobileTab('preview');
   };
+
+  // The current API key for quiz usage
+  const currentApiKey = apiKeys.length > 0 ? apiKeys[keyIndex] : undefined;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#0a0a0a] text-gray-100 font-sans selection:bg-indigo-500/30">
@@ -178,6 +203,20 @@ export default function App() {
                     >
                       {isGeneratingReadingSheet ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
                       Ficha de Leitura
+                    </button>
+                    {/* Quiz button */}
+                    <button
+                      onClick={activeMode === 'quiz' ? handleBackToChat : handleOpenQuiz}
+                      disabled={teachingDocs.length === 0}
+                      className={cn(
+                        "text-[10px] border rounded px-2 py-1 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
+                        activeMode === 'quiz'
+                          ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30"
+                          : "bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border-indigo-500/30"
+                      )}
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      {activeMode === 'quiz' ? 'Voltar ao Chat' : 'Testar Conhecimento'}
                     </button>
                   </div>
                 </div>
@@ -229,6 +268,20 @@ export default function App() {
                               {isGeneratingReadingSheet ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
                               Gerar Ficha de Leitura
                             </button>
+                            {/* Quiz button mobile sidebar */}
+                            <button
+                              onClick={activeMode === 'quiz' ? handleBackToChat : handleOpenQuiz}
+                              disabled={teachingDocs.length === 0}
+                              className={cn(
+                                "w-full text-[10px] border rounded px-2 py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
+                                activeMode === 'quiz'
+                                  ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30"
+                                  : "bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border-indigo-500/30"
+                              )}
+                            >
+                              <BookOpen className="w-3 h-3" />
+                              {activeMode === 'quiz' ? 'Voltar ao Chat' : 'Testar Conhecimento'}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -241,11 +294,11 @@ export default function App() {
                 )}
               </AnimatePresence>
 
-              {/* Main Content: Chat & Analysis */}
+              {/* Main Content: Chat / Quiz */}
               <div className={cn(
                 "h-full flex flex-col gap-4 transition-all duration-300 pb-16 lg:pb-0",
                 maximizedPanel === 'chat' ? "lg:col-span-12" : (selectedFile ? "lg:col-span-5" : "lg:col-span-9"),
-                maximizedPanel === 'file' ? "hidden" : (activeMobileTab !== 'chat' ? "hidden lg:flex" : "flex")
+                maximizedPanel === 'file' ? "hidden" : (activeMobileTab !== 'chat' && activeMobileTab !== 'quiz' ? "hidden lg:flex" : "flex")
               )}>
                 {repoError && (
                   <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-xl text-xs relative overflow-hidden">
@@ -256,22 +309,48 @@ export default function App() {
                     />
                   </div>
                 )}
-                
-                <ChatInterface 
-                  messages={chatHistory} 
-                  onSendMessage={(msg) => sendMessage(msg, teachingDocs)}
-                  isThinking={isThinking}
-                  showThinkingState={isWaitingForFirstChunk}
-                  processLogs={processLogs}
-                  isMaximized={maximizedPanel === 'chat'}
-                  onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
-                  repositoryName={repositoryName}
-                  repositoryDescription={repoDescription}
-                  onTranscribeAudio={transcribeAudioMessage}
-                  isTranscribingAudio={isTranscribingAudio}
-                  onSynthesizeAudio={synthesizeMessageAudio}
-                  isSynthesizingAudio={isSynthesizingAudio}
-                />
+
+                <AnimatePresence mode="wait">
+                  {activeMode === 'quiz' ? (
+                    <motion.div
+                      key="quiz-panel"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="flex-1 min-h-0"
+                    >
+                      <QuizInterface
+                        allFiles={teachingDocs}
+                        apiKey={currentApiKey}
+                        onBack={handleBackToChat}
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="chat-panel"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="flex-1 min-h-0"
+                    >
+                      <ChatInterface 
+                        messages={chatHistory} 
+                        onSendMessage={(msg) => sendMessage(msg, teachingDocs)}
+                        isThinking={isThinking}
+                        showThinkingState={isWaitingForFirstChunk}
+                        processLogs={processLogs}
+                        isMaximized={maximizedPanel === 'chat'}
+                        onToggleMaximize={() => setMaximizedPanel(prev => prev === 'chat' ? null : 'chat')}
+                        repositoryName={repositoryName}
+                        repositoryDescription={repoDescription}
+                        onTranscribeAudio={transcribeAudioMessage}
+                        isTranscribingAudio={isTranscribingAudio}
+                        onSynthesizeAudio={synthesizeMessageAudio}
+                        isSynthesizingAudio={isSynthesizingAudio}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* File Preview Pane */}
@@ -311,7 +390,7 @@ export default function App() {
                   <span className="text-[10px]">Menu</span>
                 </button>
                 <button 
-                  onClick={() => setActiveMobileTab('chat')}
+                  onClick={() => { setActiveMobileTab('chat'); setActiveMode('chat'); }}
                   className={cn(
                     "flex flex-col items-center gap-1 transition-colors",
                     activeMobileTab === 'chat' ? "text-indigo-400" : "text-gray-400"
@@ -319,6 +398,18 @@ export default function App() {
                 >
                   <MessageSquare className="w-5 h-5" />
                   <span className="text-[10px]">Chat</span>
+                </button>
+                <button
+                  onClick={handleOpenQuiz}
+                  disabled={teachingDocs.length === 0}
+                  className={cn(
+                    "flex flex-col items-center gap-1 transition-colors",
+                    activeMobileTab === 'quiz' ? "text-emerald-400" : "text-gray-400 hover:text-white",
+                    teachingDocs.length === 0 && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  <BookOpen className="w-5 h-5" />
+                  <span className="text-[10px]">Testar</span>
                 </button>
                 {selectedFile && (
                   <button 

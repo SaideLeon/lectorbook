@@ -28,3 +28,16 @@ export interface AnalysisMessage {
   isSystemNotice?: boolean;
   relatedLinks?: { title: string; url: string }[];
 }
+
+// ─── Quiz ────────────────────────────────────────────────────────────────────
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  source: string;
+}
+
+export type QuizState = 'idle' | 'loading' | 'active' | 'finished';
