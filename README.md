@@ -38,6 +38,7 @@ Variáveis mais importantes:
 - `GROQ_API_KEY`: chave da API Groq para transcrição de áudio (fala-para-texto no chat).
 - `SUPABASE_URL`: URL do projeto Supabase (persistência de dados).
 - `SUPABASE_SERVICE_ROLE_KEY`: chave de serviço do Supabase (uso exclusivo no backend).
+- `SUPABASE_ANON_KEY`: chave publishable/anon do Supabase (pode ser usada como fallback quando a service role não estiver definida).
 
 ### Importante sobre o token do GitHub
 
@@ -49,9 +50,9 @@ O frontend não deve enviar token por `localStorage` ou cabeçalhos customizados
 
 1. No Supabase Dashboard, abra **SQL Editor**.
 2. Execute o conteúdo de `supabase/migration.sql`.
-3. Configure `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no `.env`.
+3. Configure `SUPABASE_URL` no `.env` e pelo menos uma chave: `SUPABASE_SERVICE_ROLE_KEY` (recomendado para backend) ou `SUPABASE_ANON_KEY` (fallback).
 
-Sem essas variáveis, os endpoints de persistência retornam erro `503` e a app continua em modo sem persistência.
+Sem `SUPABASE_URL` e sem uma das chaves, os endpoints de persistência retornam erro `503` e a app continua em modo sem persistência.
 
 ## Rodando localmente
 

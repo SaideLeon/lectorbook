@@ -1,8 +1,7 @@
 // src/app/api/student/profile/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { jsonError, AppError } from '@/app/api/_utils';
-import { getLevelFromXp } from '@/types/student';
+import { getSupabaseServerClient } from '@/server/supabase';
 
 export const runtime = 'nodejs';
 
@@ -11,10 +10,11 @@ function generateAccessCode(): string {
 }
 
 function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new AppError('Supabase não configurado.', 503);
-  return createClient(url, key);
+  try {
+    return getSupabaseServerClient();
+  } catch {
+    throw new AppError('Supabase não configurado.', 503);
+  }
 }
 
 // GET /api/student/profile?session_key=xxx

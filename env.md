@@ -34,3 +34,7 @@ SUPABASE_URL=
 # NUNCA exponha no frontend — use exclusivamente no servidor.
 # Obtenha em: Project Settings → API → service_role
 SUPABASE_SERVICE_ROLE_KEY=
+
+# SUPABASE_ANON_KEY: chave publishable/anon (uso no frontend e fallback no backend).
+# Obtenha em: Project Settings → API → publishable (anon)
+SUPABASE_ANON_KEY=
