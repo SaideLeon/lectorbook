@@ -36,11 +36,22 @@ Variáveis mais importantes:
 - `APP_URL`: URL base da aplicação (usada em callbacks e links internos).
 - `GITHUB_TOKEN`: token do GitHub usado **apenas no servidor** para chamadas à API do GitHub.
 - `GROQ_API_KEY`: chave da API Groq para transcrição de áudio (fala-para-texto no chat).
+- `SUPABASE_URL`: URL do projeto Supabase (persistência de dados).
+- `SUPABASE_SERVICE_ROLE_KEY`: chave de serviço do Supabase (uso exclusivo no backend).
 
 ### Importante sobre o token do GitHub
 
 O token do GitHub deve ser configurado **somente no `.env` do servidor**.
 O frontend não deve enviar token por `localStorage` ou cabeçalhos customizados.
+
+
+### Habilitando persistência no Supabase
+
+1. No Supabase Dashboard, abra **SQL Editor**.
+2. Execute o conteúdo de `supabase/migration.sql`.
+3. Configure `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no `.env`.
+
+Sem essas variáveis, os endpoints de persistência retornam erro `503` e a app continua em modo sem persistência.
 
 ## Rodando localmente
 
@@ -65,6 +76,7 @@ A aplicação ficará disponível em `http://localhost:3000`.
 3. Aguarde a leitura da árvore de arquivos.
 4. Navegue pelos arquivos e faça perguntas no chat.
 5. Opcionalmente, gere uma ficha de leitura.
+6. Para gamificação do aluno, use os botões **Entrar** ou **Inscrever-se** no topo para persistir progresso no Supabase.
 
 ## Estrutura de pastas (resumida)
 
