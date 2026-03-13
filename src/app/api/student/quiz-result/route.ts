@@ -1,16 +1,17 @@
 // src/app/api/student/quiz-result/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { jsonError, AppError } from '@/app/api/_utils';
+import { getSupabaseServerClient } from '@/server/supabase';
 import { calcQuizXp, getLevelFromXp } from '@/types/student';
 
 export const runtime = 'nodejs';
 
 function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new AppError('Supabase não configurado.', 503);
-  return createClient(url, key);
+  try {
+    return getSupabaseServerClient();
+  } catch {
+    throw new AppError('Supabase não configurado.', 503);
+  }
 }
 
 // POST /api/student/quiz-result

@@ -4,32 +4,41 @@ import { Student, QuizResult, RankingEntry } from '@/types/student';
 
 const SESSION_KEY_STORAGE = 'lectorbook-student-session';
 
+function createSessionKey(): string {
+  return `sk_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function getOrCreateSessionKey(): string {
   if (typeof window === 'undefined') return '';
   let key = localStorage.getItem(SESSION_KEY_STORAGE);
   if (!key) {
-    key = `sk_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    key = createSessionKey();
     localStorage.setItem(SESSION_KEY_STORAGE, key);
   }
   return key;
 }
 
-function isSupabaseAvailable(): boolean {
-  // We'll try and handle errors gracefully
-  return true;
-}
+export type StudentAuthMode = 'signup' | 'login' | 'edit';
 
 export function useStudentProfile() {
   const [student, setStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<StudentAuthMode>('signup');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [recentResults, setRecentResults] = useState<QuizResult[]>([]);
   const [levelUpInfo, setLevelUpInfo] = useState<{ from: string; to: string; xp: number } | null>(null);
-  const [sessionKey] = useState<string>(() => getOrCreateSessionKey());
+  const [sessionKey, setSessionKey] = useState<string>(() => getOrCreateSessionKey());
+  const [lastAccessCode, setLastAccessCode] = useState<string | null>(null);
 
-  // Load profile on mount
+  const persistSessionKey = useCallback((key: string) => {
+    setSessionKey(key);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SESSION_KEY_STORAGE, key);
+    }
+  }, []);
+
   useEffect(() => {
     if (!sessionKey) return;
     loadProfile();
@@ -43,11 +52,8 @@ export function useStudentProfile() {
       if (res.ok) {
         const { student: data } = await res.json();
         setStudent(data);
-        // Show profile setup if new user
-        if (!data) setIsProfileOpen(true);
       }
     } catch (err) {
-      // Supabase not configured — silent fail, features disabled
       console.info('[useStudentProfile] Supabase não disponível.');
     } finally {
       setIsLoading(false);
@@ -64,9 +70,10 @@ export function useStudentProfile() {
         body: JSON.stringify({ session_key: sessionKey, name, class: cls, gender: gender || null }),
       });
       if (res.ok || res.status === 201) {
-        const { student: data } = await res.json();
+        const { student: data, access_code } = await res.json();
         setStudent(data);
-        setIsProfileOpen(false);
+        setLastAccessCode(access_code || null);
+        setAuthMode('edit');
       }
     } catch (err) {
       console.error('[useStudentProfile] Erro ao criar perfil:', err);
@@ -74,6 +81,38 @@ export function useStudentProfile() {
       setIsLoading(false);
     }
   }, [sessionKey]);
+
+  const loginWithAccessCode = useCallback(async (accessCode: string) => {
+    if (!sessionKey) return false;
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/student/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_code: accessCode.trim().toUpperCase(), session_key: sessionKey }),
+      });
+      if (!res.ok) return false;
+      const { student: data } = await res.json();
+      setStudent(data);
+      setLastAccessCode(null);
+      setIsProfileOpen(false);
+      return true;
+    } catch (err) {
+      console.error('[useStudentProfile] Erro no login:', err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sessionKey]);
+
+  const logoutStudent = useCallback(() => {
+    setStudent(null);
+    setLastAccessCode(null);
+    const newKey = createSessionKey();
+    persistSessionKey(newKey);
+    setAuthMode('login');
+    setIsDashboardOpen(false);
+  }, [persistSessionKey]);
 
   const updateProfile = useCallback(async (updates: { name?: string; class?: string; gender?: 'M' | 'F' | '' }) => {
     if (!sessionKey) return;
@@ -141,7 +180,18 @@ export function useStudentProfile() {
     }
   }, []);
 
-  const openProfile = useCallback(() => setIsProfileOpen(true), []);
+  const openSignup = useCallback(() => {
+    setAuthMode('signup');
+    setIsProfileOpen(true);
+  }, []);
+  const openLogin = useCallback(() => {
+    setAuthMode('login');
+    setIsProfileOpen(true);
+  }, []);
+  const openProfile = useCallback(() => {
+    setAuthMode(student ? 'edit' : 'signup');
+    setIsProfileOpen(true);
+  }, [student]);
   const closeProfile = useCallback(() => setIsProfileOpen(false), []);
   const openDashboard = useCallback(() => { setIsDashboardOpen(true); loadRanking(student?.class || undefined); }, [student, loadRanking]);
   const closeDashboard = useCallback(() => setIsDashboardOpen(false), []);
@@ -151,15 +201,21 @@ export function useStudentProfile() {
     sessionKey,
     isLoading,
     isProfileOpen,
+    authMode,
     isDashboardOpen,
     ranking,
     recentResults,
     levelUpInfo,
+    lastAccessCode,
     loadProfile,
     createProfile,
+    loginWithAccessCode,
+    logoutStudent,
     updateProfile,
     saveQuizResult,
     loadRanking,
+    openSignup,
+    openLogin,
     openProfile,
     closeProfile,
     openDashboard,

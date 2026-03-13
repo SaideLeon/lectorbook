@@ -1,16 +1,20 @@
 // src/app/api/student/profile/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { jsonError, AppError } from '@/app/api/_utils';
-import { getLevelFromXp } from '@/types/student';
+import { getSupabaseServerClient } from '@/server/supabase';
 
 export const runtime = 'nodejs';
 
+function generateAccessCode(): string {
+  return `LB-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
 function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new AppError('Supabase não configurado.', 503);
-  return createClient(url, key);
+  try {
+    return getSupabaseServerClient();
+  } catch {
+    throw new AppError('Supabase não configurado.', 503);
+  }
 }
 
 // GET /api/student/profile?session_key=xxx
@@ -45,10 +49,13 @@ export async function POST(req: NextRequest) {
     if (gender && !['M', 'F'].includes(gender)) throw new AppError('gender deve ser M ou F.', 400);
 
     const supabase = getSupabase();
+    const accessCode = generateAccessCode();
+
     const { data, error } = await supabase
       .from('students')
       .insert({
         session_key,
+        access_code: accessCode,
         name: name.trim(),
         class: cls?.trim() || null,
         gender: gender || null,
@@ -62,7 +69,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw new AppError(error.message, 500);
-    return NextResponse.json({ student: data }, { status: 201 });
+    return NextResponse.json({ student: data, access_code: accessCode }, { status: 201 });
   } catch (err) {
     return jsonError(err);
   }

@@ -167,7 +167,7 @@ Onde `saveQuizResult` vem de `useStudentProfile`.
 
 ## Degradação graciosa
 
-Se o Supabase não estiver configurado (`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` ausentes):
+Se o Supabase não estiver configurado (`SUPABASE_URL` e sem `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_ANON_KEY`):
 - Os endpoints retornam `503` silenciosamente
 - O hook captura o erro e não exibe nada
 - O resto da app funciona normalmente

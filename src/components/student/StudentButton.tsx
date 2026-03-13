@@ -1,29 +1,39 @@
 // src/components/student/StudentButton.tsx
-import { User, TrendingUp } from 'lucide-react';
+import { UserPlus, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Student, LEVEL_META } from '@/types/student';
-import { LevelBadge } from './LevelBadge';
 
 interface StudentButtonProps {
   student: Student | null;
   isLoading?: boolean;
   onOpenDashboard: () => void;
   onOpenProfile: () => void;
+  onOpenLogin: () => void;
 }
 
-export function StudentButton({ student, isLoading, onOpenDashboard, onOpenProfile }: StudentButtonProps) {
+export function StudentButton({ student, isLoading, onOpenDashboard, onOpenProfile, onOpenLogin }: StudentButtonProps) {
   if (isLoading) return null;
 
   if (!student) {
     return (
-      <button
-        onClick={onOpenProfile}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-medium transition-all hover:scale-105"
-        title="Criar perfil de aluno"
-      >
-        <User className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">Criar Perfil</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onOpenLogin}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-medium transition-all"
+          title="Entrar"
+        >
+          <LogIn className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Entrar</span>
+        </button>
+        <button
+          onClick={onOpenProfile}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-medium transition-all"
+          title="Inscrever-se"
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Inscrever-se</span>
+        </button>
+      </div>
     );
   }
 

@@ -38,12 +38,17 @@ export default function App() {
     student,
     isLoading: isStudentLoading,
     isProfileOpen,
+    authMode,
     isDashboardOpen,
     ranking,
     levelUpInfo,
+    lastAccessCode,
     createProfile,
+    loginWithAccessCode,
     updateProfile,
     saveQuizResult,
+    openSignup,
+    openLogin,
     openProfile,
     closeProfile,
     openDashboard,
@@ -203,7 +208,8 @@ export default function App() {
         student={student}
         isStudentLoading={isStudentLoading}
         onOpenStudentDashboard={openDashboard}
-        onOpenStudentProfile={openProfile}
+        onOpenStudentProfile={openSignup}
+        onOpenStudentLogin={openLogin}
       />
       
       <main className="flex-1 w-full p-0 md:p-6 overflow-hidden relative">
@@ -471,13 +477,14 @@ export default function App() {
       {/* ── Gamification overlays ── */}
       <StudentProfileModal
         isOpen={isProfileOpen}
+        mode={authMode}
         onClose={closeProfile}
-        onSave={(name, cls, gender) => (
-          student
-            ? updateProfile({ name, class: cls, gender })
-            : createProfile(name, cls, gender)
-        )}
+        onSignUp={createProfile}
+        onLogin={loginWithAccessCode}
+        onSaveEdit={(name, cls, gender) => updateProfile({ name, class: cls, gender })}
         existingStudent={student}
+        isLoading={isStudentLoading}
+        lastAccessCode={lastAccessCode}
       />
 
       <StudentDashboard
