@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -515,9 +515,11 @@ interface QuizInterfaceProps {
   allFiles: { path: string; content: string }[];
   apiKey?: string;
   onBack: () => void;
+  /** Called once when the quiz finishes, before the results screen is shown. */
+  onQuizFinished?: (score: number, total: number, percentage: number) => void;
 }
 
-export function QuizInterface({ allFiles, apiKey, onBack }: QuizInterfaceProps) {
+export function QuizInterface({ allFiles, apiKey, onBack, onQuizFinished }: QuizInterfaceProps) {
   const [questionCount, setQuestionCount] = useState<number>(10);
 
   const {
@@ -562,6 +564,18 @@ export function QuizInterface({ allFiles, apiKey, onBack }: QuizInterfaceProps) 
     startQuiz(aulasFiles, questionCount, apiKey);
   };
 
+  /**
+   * Wrapper around nextQuestion that fires onQuizFinished when advancing
+   * past the last question, so the parent (App.tsx) can save the XP result
+   * before the results screen appears.
+   */
+  const handleNext = useCallback(() => {
+    if (isLastQuestion) {
+      onQuizFinished?.(score, questions.length, percentage);
+    }
+    nextQuestion();
+  }, [isLastQuestion, onQuizFinished, score, questions.length, percentage, nextQuestion]);
+
   return (
     <div className="flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden h-[96%]">
       <AnimatePresence mode="wait">
@@ -586,7 +600,7 @@ export function QuizInterface({ allFiles, apiKey, onBack }: QuizInterfaceProps) 
             selectedAnswer={selectedAnswer}
             isAnswered={isAnswered}
             onSelect={selectAnswer}
-            onNext={nextQuestion}
+            onNext={handleNext}
             isLast={isLastQuestion}
           />
         ) : quizState === 'finished' ? (

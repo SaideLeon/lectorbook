@@ -11,9 +11,15 @@ import { FileViewer } from '@/components/file-explorer/FileViewer';
 import { ChatInterface } from '@/components/ai-chat/ChatInterface';
 import { QuizInterface } from '@/components/quiz/QuizInterface';
 
+// Student components
+import { StudentProfileModal } from '@/components/student/StudentProfileModal';
+import { StudentDashboard } from '@/components/student/StudentDashboard';
+import { LevelUpToast } from '@/components/student/LevelUpToast';
+
 // Hooks
 import { useGithubRepository } from '@/hooks/useGithubRepository';
 import { useAIChat } from '@/hooks/useAIChat';
+import { useStudentProfile } from '@/hooks/useStudentProfile';
 
 import { useToast } from '@/components/ui/Toast';
 
@@ -26,6 +32,24 @@ export default function App() {
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<ActiveMode>('chat');
+
+  // Student profile hook
+  const {
+    student,
+    isLoading: isStudentLoading,
+    isProfileOpen,
+    isDashboardOpen,
+    ranking,
+    levelUpInfo,
+    createProfile,
+    updateProfile,
+    saveQuizResult,
+    openProfile,
+    closeProfile,
+    openDashboard,
+    closeDashboard,
+    loadRanking,
+  } = useStudentProfile();
 
   // Custom Hooks
   const handleRepositoryUpdated = useCallback(() => {
@@ -143,6 +167,16 @@ export default function App() {
     setActiveMobileTab('chat');
   };
 
+  // Callback fired when quiz finishes — saves XP to Supabase
+  const handleQuizFinished = useCallback(async (
+    score: number,
+    total: number,
+    percentage: number,
+  ) => {
+    const repoSlug = repoUrl?.split('github.com/')[1];
+    await saveQuizResult(score, total, percentage, repoSlug);
+  }, [repoUrl, saveQuizResult]);
+
   const repositoryName = (() => {
     if (!repoUrl) return undefined;
     const cleanUrl = repoUrl.replace(/\.git\/?$/, '').replace(/\/$/, '');
@@ -161,11 +195,15 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#0a0a0a] text-gray-100 font-sans selection:bg-indigo-500/30">
-      <Header 
-        apiKeys={apiKeys} 
-        keyIndex={keyIndex} 
-        onUploadKeys={handleKeyFileUpload} 
+      <Header
+        apiKeys={apiKeys}
+        keyIndex={keyIndex}
+        onUploadKeys={handleKeyFileUpload}
         onLogoClick={clearRepository}
+        student={student}
+        isStudentLoading={isStudentLoading}
+        onOpenStudentDashboard={openDashboard}
+        onOpenStudentProfile={openProfile}
       />
       
       <main className="flex-1 w-full p-0 md:p-6 overflow-hidden relative">
@@ -323,6 +361,7 @@ export default function App() {
                         allFiles={teachingDocs}
                         apiKey={currentApiKey}
                         onBack={handleBackToChat}
+                        onQuizFinished={handleQuizFinished}
                       />
                     </motion.div>
                   ) : (
@@ -428,6 +467,34 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* ── Gamification overlays ── */}
+      <StudentProfileModal
+        isOpen={isProfileOpen}
+        onClose={closeProfile}
+        onSave={student ? updateProfile : createProfile}
+        existingStudent={student}
+      />
+
+      <StudentDashboard
+        isOpen={isDashboardOpen}
+        onClose={closeDashboard}
+        student={student!}
+        ranking={ranking}
+        onEditProfile={() => { closeDashboard(); openProfile(); }}
+        onLoadRanking={loadRanking}
+      />
+
+      <AnimatePresence>
+        {levelUpInfo && (
+          <LevelUpToast
+            from={levelUpInfo.from as any}
+            to={levelUpInfo.to as any}
+            xp={levelUpInfo.xp}
+            onDismiss={() => {}}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
