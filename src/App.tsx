@@ -472,7 +472,11 @@ export default function App() {
       <StudentProfileModal
         isOpen={isProfileOpen}
         onClose={closeProfile}
-        onSave={student ? updateProfile : createProfile}
+        onSave={(name, cls, gender) => (
+          student
+            ? updateProfile({ name, class: cls, gender })
+            : createProfile(name, cls, gender)
+        )}
         existingStudent={student}
       />
 
