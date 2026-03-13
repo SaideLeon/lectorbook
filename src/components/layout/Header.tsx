@@ -3,15 +3,30 @@ import { Settings, Upload, Key, Maximize, Minimize } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { LectorLogo } from '@/components/layout/LectorLogo';
 import { useFullscreen } from '@/contexts/FullscreenContext';
+import { StudentButton } from '@/components/student/StudentButton';
+import { Student } from '@/types/student';
 
 interface HeaderProps {
   apiKeys: string[];
   keyIndex: number;
   onUploadKeys: (file: File) => Promise<number>;
   onLogoClick?: () => void;
+  student?: Student | null;
+  isStudentLoading?: boolean;
+  onOpenStudentDashboard?: () => void;
+  onOpenStudentProfile?: () => void;
 }
 
-export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }: HeaderProps) => {
+export const Header = ({
+  apiKeys = [],
+  keyIndex = 0,
+  onUploadKeys,
+  onLogoClick,
+  student,
+  isStudentLoading,
+  onOpenStudentDashboard,
+  onOpenStudentProfile,
+}: HeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
@@ -46,7 +61,15 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
           <span className="font-semibold text-base md:text-lg tracking-tight text-white truncate max-w-[120px] md:max-w-none">LectorBook</span>
         </button>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Botão de perfil do aluno */}
+          <StudentButton
+            student={student ?? null}
+            isLoading={isStudentLoading}
+            onOpenDashboard={onOpenStudentDashboard ?? (() => {})}
+            onOpenProfile={onOpenStudentProfile ?? (() => {})}
+          />
+
           <button
             onClick={toggleFullscreen}
             className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
@@ -65,7 +88,7 @@ export const Header = ({ apiKeys = [], keyIndex = 0, onUploadKeys, onLogoClick }
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-[#0a0a0a]" />
             )}
           </button>
-          <span className="text-sm text-gray-500">v1.0.0</span>
+          <span className="text-sm text-gray-500 hidden md:inline">v1.0.0</span>
         </div>
       </div>
 
