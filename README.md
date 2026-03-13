@@ -76,6 +76,7 @@ A aplicação ficará disponível em `http://localhost:3000`.
 3. Aguarde a leitura da árvore de arquivos.
 4. Navegue pelos arquivos e faça perguntas no chat.
 5. Opcionalmente, gere uma ficha de leitura.
+6. Para gamificação do aluno, use os botões **Entrar** ou **Inscrever-se** no topo para persistir progresso no Supabase.
 
 ## Estrutura de pastas (resumida)
 

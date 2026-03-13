@@ -15,6 +15,7 @@ interface HeaderProps {
   isStudentLoading?: boolean;
   onOpenStudentDashboard?: () => void;
   onOpenStudentProfile?: () => void;
+  onOpenStudentLogin?: () => void;
 }
 
 export const Header = ({
@@ -26,6 +27,7 @@ export const Header = ({
   isStudentLoading,
   onOpenStudentDashboard,
   onOpenStudentProfile,
+  onOpenStudentLogin,
 }: HeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +70,7 @@ export const Header = ({
             isLoading={isStudentLoading}
             onOpenDashboard={onOpenStudentDashboard ?? (() => {})}
             onOpenProfile={onOpenStudentProfile ?? (() => {})}
+            onOpenLogin={onOpenStudentLogin ?? (() => {})}
           />
 
           <button

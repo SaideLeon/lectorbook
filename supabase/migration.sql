@@ -73,6 +73,7 @@ $$;
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
   session_key text not null unique,
+  access_code text unique,
   name text not null,
   class text,
   course text not null default 'Contabilidade',
@@ -144,3 +145,7 @@ select
     order by s.total_xp desc, s.avg_percentage desc, s.quizzes_completed desc, s.created_at asc
   ) as rank_position
 from public.students s;
+
+
+alter table public.students add column if not exists access_code text;
+create unique index if not exists students_access_code_unique_idx on public.students(access_code) where access_code is not null;
