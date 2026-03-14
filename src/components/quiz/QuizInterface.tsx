@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, BookOpen, CheckCircle2, XCircle, ChevronRight,
   RotateCcw, MessageSquare, Loader2, AlertCircle, FileText,
+  CheckSquare, Square, Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuiz } from '@/hooks/useQuiz';
@@ -12,6 +13,21 @@ import { QuizQuestion } from '@/types';
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 const QUESTION_COUNTS = [5, 10, 15] as const;
+
+function extractRAInfo(path: string): { raNumber: string; raLabel: string } | null {
+  const match = path.match(/RA(\d+)/i);
+  if (!match) return null;
+  return {
+    raNumber: match[1],
+    raLabel: `Resultado de Aprendizagem ${match[1]}`,
+  };
+}
+
+function getFileDisplayName(path: string): string {
+  const raInfo = extractRAInfo(path);
+  if (raInfo) return raInfo.raLabel;
+  return (path.split('/').pop() || path).replace(/\.[^/.]+$/, '');
+}
 
 function ProgressBar({ current, total }: { current: number; total: number }) {
   const pct = total > 0 ? ((current + 1) / total) * 100 : 0;
@@ -55,7 +71,7 @@ function ScoreCircle({ percentage }: { percentage: number }) {
 
 // ─── Start Screen ─────────────────────────────────────────────────────────────
 
-function StartScreen({ files, hasAulasFilter, questionCount, onChangeCount, onStart, isLoading, error, onBack }: {
+function StartScreen({ files, hasAulasFilter, questionCount, onChangeCount, onStart, isLoading, error, onBack, selectedFilePaths, onToggleFile, onToggleAll }: {
   files: { path: string; content: string }[];
   hasAulasFilter: boolean;
   questionCount: number;
@@ -64,7 +80,36 @@ function StartScreen({ files, hasAulasFilter, questionCount, onChangeCount, onSt
   isLoading: boolean;
   error: string | null;
   onBack: () => void;
+  selectedFilePaths: Set<string>;
+  onToggleFile: (path: string) => void;
+  onToggleAll: () => void;
 }) {
+  const { raFiles, otherFiles, hasRAFiles, allSelected, selectedCount } = useMemo(() => {
+    const ra: { path: string; content: string; lineCount: number; raNumber: string; raLabel: string }[] = [];
+    const other: { path: string; content: string; lineCount: number }[] = [];
+
+    files.forEach((file) => {
+      const lineCount = file.content.split(/\r?\n/).length;
+      const raInfo = extractRAInfo(file.path);
+
+      if (raInfo) {
+        ra.push({ ...file, lineCount, ...raInfo });
+      } else {
+        other.push({ ...file, lineCount });
+      }
+    });
+
+    ra.sort((a, b) => Number(a.raNumber) - Number(b.raNumber));
+
+    return {
+      raFiles: ra,
+      otherFiles: other,
+      hasRAFiles: ra.length > 0,
+      allSelected: files.length > 0 && files.every((f) => selectedFilePaths.has(f.path)),
+      selectedCount: files.filter((f) => selectedFilePaths.has(f.path)).length,
+    };
+  }, [files, selectedFilePaths]);
+
   return (
     <motion.div key="start" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="flex flex-col h-full">
       <div className="p-3 md:p-4 border-b border-white/10 bg-[#151515] flex items-center justify-between">
@@ -92,13 +137,74 @@ function StartScreen({ files, hasAulasFilter, questionCount, onChangeCount, onSt
               </p>
             </div>
           </div>
-          <div className="space-y-1.5 max-h-40 overflow-y-auto">
-            {files.map((f) => (
-              <div key={f.path} className="flex items-center gap-2 text-xs text-gray-400 py-1 px-2 rounded-lg bg-white/3 hover:bg-white/5">
-                <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
-                <span className="truncate">{f.path}</span>
+          {hasRAFiles && (
+            <div className="text-xs bg-indigo-500/8 border border-indigo-500/20 rounded-lg p-3 text-indigo-100">
+              RA = Resultado de Aprendizagem. Cada RA corresponde a uma unidade curricular com objetivos específicos de aprendizagem.
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-gray-400">{selectedCount} de {files.length} ficheiros selecionados</p>
+            <button onClick={onToggleAll} type="button" className="text-xs text-indigo-300 hover:text-indigo-200 transition-colors">
+              {allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+            </button>
+          </div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            {raFiles.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300">Resultados de Aprendizagem</p>
+                {raFiles.map((f) => {
+                  const isSelected = selectedFilePaths.has(f.path);
+                  return (
+                    <button
+                      key={f.path}
+                      onClick={() => onToggleFile(f.path)}
+                      type="button"
+                      className={cn(
+                        'w-full text-left flex items-center gap-3 py-2.5 px-2.5 rounded-lg border transition-all',
+                        isSelected ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-white/3 border-white/10 hover:bg-white/5',
+                      )}
+                    >
+                      {isSelected ? <CheckSquare className="w-4 h-4 text-indigo-300 shrink-0" /> : <Square className="w-4 h-4 text-gray-400 shrink-0" />}
+                      <span className="text-[10px] px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-200 font-semibold">{f.raNumber}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-white truncate">{f.raLabel}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{f.path}</p>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 shrink-0">{f.lineCount}L</span>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            )}
+
+            {otherFiles.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Outros documentos</p>
+                {otherFiles.map((f) => {
+                  const isSelected = selectedFilePaths.has(f.path);
+                  return (
+                    <button
+                      key={f.path}
+                      onClick={() => onToggleFile(f.path)}
+                      type="button"
+                      className={cn(
+                        'w-full text-left flex items-center gap-3 py-2.5 px-2.5 rounded-lg border transition-all',
+                        isSelected ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-white/3 border-white/10 hover:bg-white/5',
+                      )}
+                    >
+                      {isSelected ? <CheckSquare className="w-4 h-4 text-indigo-300 shrink-0" /> : <Square className="w-4 h-4 text-gray-400 shrink-0" />}
+                      <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-white truncate">{getFileDisplayName(f.path)}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{f.path}</p>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 shrink-0">{f.lineCount}L</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           {files.length === 0 && (
             <p className="text-xs text-amber-400 flex items-center gap-1.5">
@@ -129,14 +235,14 @@ function StartScreen({ files, hasAulasFilter, questionCount, onChangeCount, onSt
           </div>
         )}
 
-        <button onClick={onStart} disabled={isLoading || files.length === 0}
+        <button onClick={onStart} disabled={isLoading || selectedCount === 0}
           className={cn('w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2',
-            files.length > 0 && !isLoading
+            selectedCount > 0 && !isLoading
               ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
               : 'bg-white/5 text-gray-600 cursor-not-allowed'
           )}
         >
-          {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> A gerar questionário com IA...</> : <><BookOpen className="w-4 h-4" /> Iniciar Teste</>}
+          {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> A gerar questionário com IA...</> : <><Layers className="w-4 h-4" /> Iniciar Teste · {selectedCount} ficheiros</>}
         </button>
 
         <p className="text-[10px] text-gray-600 text-center leading-relaxed">
@@ -260,6 +366,7 @@ function ResultsScreen({ questions, answers, score, percentage, performanceLabel
           {questions.map((q, i) => {
             const selected = answers[i];
             const correct = selected === q.correctIndex;
+            const raInfo = extractRAInfo(q.source || '');
             return (
               <motion.div key={q.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 className={cn('rounded-xl border p-3 space-y-2 text-xs', correct ? 'bg-emerald-500/6 border-emerald-500/20' : 'bg-red-500/6 border-red-500/20')}
@@ -268,9 +375,16 @@ function ResultsScreen({ questions, answers, score, percentage, performanceLabel
                   {correct
                     ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
-                  <p className={cn('font-medium leading-relaxed', correct ? 'text-gray-200' : 'text-gray-300')}>
-                    {i + 1}. {q.question}
-                  </p>
+                  <div className="space-y-1">
+                    {!correct && raInfo && (
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
+                        {raInfo.raLabel}
+                      </p>
+                    )}
+                    <p className={cn('font-medium leading-relaxed', correct ? 'text-gray-200' : 'text-gray-300')}>
+                      {i + 1}. {q.question}
+                    </p>
+                  </div>
                 </div>
                 {!correct && (
                   <div className="pl-6 space-y-1">
@@ -334,6 +448,31 @@ export function QuizInterface({ allFiles, apiKey, onBack, onQuizFinished }: Quiz
   })();
 
   const hasAulasFilter = aulasFiles.length < allFiles.length;
+  const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(
+    () => new Set(aulasFiles.map((f) => f.path)),
+  );
+
+  const selectedFiles = useMemo(
+    () => aulasFiles.filter((f) => selectedFilePaths.has(f.path)),
+    [aulasFiles, selectedFilePaths],
+  );
+
+  const toggleFile = useCallback((path: string) => {
+    setSelectedFilePaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  const toggleAllFiles = useCallback(() => {
+    setSelectedFilePaths((prev) => (
+      prev.size === aulasFiles.length
+        ? new Set<string>()
+        : new Set(aulasFiles.map((f) => f.path))
+    ));
+  }, [aulasFiles]);
 
   const handleNext = useCallback(() => {
     if (isLastQuestion) {
@@ -349,8 +488,11 @@ export function QuizInterface({ allFiles, apiKey, onBack, onQuizFinished }: Quiz
         {quizState === 'idle' || quizState === 'loading' ? (
           <StartScreen key="start" files={aulasFiles} hasAulasFilter={hasAulasFilter}
             questionCount={questionCount} onChangeCount={setQuestionCount}
-            onStart={() => startQuiz(aulasFiles, questionCount, apiKey)}
+            onStart={() => startQuiz(selectedFiles, questionCount, apiKey)}
             isLoading={quizState === 'loading'} error={error} onBack={onBack}
+            selectedFilePaths={selectedFilePaths}
+            onToggleFile={toggleFile}
+            onToggleAll={toggleAllFiles}
           />
         ) : quizState === 'active' && currentQuestion ? (
           <QuestionScreen key={`q-${currentIndex}`}

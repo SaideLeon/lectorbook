@@ -4,6 +4,32 @@ import { jsonError } from '@/app/api/_utils';
 
 export const runtime = 'nodejs';
 
+function extractRAMetadata(files: { path: string; content: string }[]): string {
+  const raEntries: string[] = [];
+
+  for (const f of files) {
+    const match = f.path.match(/RA(\d+)/i);
+    if (match) {
+      raEntries.push(
+        `  - "${f.path}" → RA${match[1]} = Resultado de Aprendizagem ${match[1]}`,
+      );
+    }
+  }
+
+  if (raEntries.length === 0) return '';
+
+  return `
+GLOSSÁRIO DE SIGLAS DOS FICHEIROS:
+${raEntries.join('\n')}
+  - "RA" = Resultado de Aprendizagem — unidade curricular com objetivos de
+    aprendizagem específicos.
+  - Cada RA representa um módulo avaliável e independente do currículo.
+  - Nas explicações das respostas, mencione sempre o RA de origem de forma completa.
+    Exemplo: em vez de "conforme RA1.md", escreva
+    "conforme o Resultado de Aprendizagem 1 (RA1)".
+`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { contextFiles, apiKey, questionCount = 10 } = await req.json();
@@ -17,13 +43,19 @@ export async function POST(req: NextRequest) {
 
     const ai = getAIClient(apiKey);
 
-    const combinedContent = (contextFiles as { path: string; content: string }[])
+    const typedContextFiles = contextFiles as { path: string; content: string }[];
+
+    const combinedContent = typedContextFiles
       .map((f) => `### Arquivo: ${f.path}\n\n${f.content.trim()}`)
       .join('\n\n---\n\n')
       .slice(0, 18000);
 
+    const raMetadata = extractRAMetadata(typedContextFiles);
+
     const prompt = `
 Você é um avaliador educacional especializado. Sua tarefa é criar um questionário de avaliação com base EXCLUSIVAMENTE nos documentos fornecidos.
+
+${raMetadata}
 
 REGRAS ABSOLUTAS — não podem ser violadas:
 1. Crie EXATAMENTE ${questionCount} perguntas.
@@ -33,8 +65,9 @@ REGRAS ABSOLUTAS — não podem ser violadas:
 5. Cada pergunta tem EXATAMENTE 4 opções de resposta (options[0] a options[3]).
 6. Apenas 1 opção é correcta (correctIndex: 0, 1, 2 ou 3).
 7. As 3 opções incorrectas devem ser plausíveis mas claramente erradas perante o conteúdo.
-8. A explicação deve referenciar um trecho concreto do documento.
+8. A explicação deve mencionar o nome completo do RA. Exemplo: "Conforme o Resultado de Aprendizagem 1 (RA1): ..."
 9. Varie os tipos: definição (30%), aplicação (40%), interpretação (30%).
+10. Distribua as perguntas proporcionalmente entre os ficheiros seleccionados.
 
 Documentos do repositório:
 ${combinedContent}
@@ -48,7 +81,7 @@ Formato obrigatório:
       "question": "Texto da pergunta?",
       "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
       "correctIndex": 0,
-      "explanation": "Conforme o documento [nome do arquivo]: '...'",
+      "explanation": "Conforme o Resultado de Aprendizagem X (RAX): '...' [referência ao conteúdo]",
       "source": "caminho/do/arquivo.md"
     }
   ]
