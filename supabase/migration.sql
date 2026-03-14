@@ -75,6 +75,7 @@ create table if not exists public.students (
   session_key text not null unique,
   access_code text unique,
   name text not null,
+  email text,
   class text,
   course text not null default 'Contabilidade',
   gender text check (gender in ('M', 'F')),
@@ -148,4 +149,32 @@ from public.students s;
 
 
 alter table public.students add column if not exists access_code text;
-create unique index if not exists students_access_code_unique_idx on public.students(access_code) where access_code is not null;
+alter table public.students add column if not exists email text;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'students'
+      and column_name = 'access_code'
+  ) then
+    execute 'create unique index if not exists students_access_code_unique_idx on public.students(access_code) where access_code is not null';
+  end if;
+end
+$$;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'students'
+      and column_name = 'email'
+  ) then
+    execute 'create unique index if not exists students_email_unique_idx on public.students(lower(email)) where email is not null';
+  end if;
+end
+$$;
