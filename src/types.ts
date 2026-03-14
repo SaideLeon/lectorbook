@@ -29,6 +29,12 @@ export interface AnalysisMessage {
   relatedLinks?: { title: string; url: string }[];
 }
 
+export interface RepositoryFile {
+  path: string;
+  content: string;
+  rawUrl?: string;
+}
+
 // ─── Quiz ────────────────────────────────────────────────────────────────────
 
 export interface QuizQuestion {

@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { useFullscreen } from '@/contexts/FullscreenContext';
+import { RepositoryFile } from '@/types';
 
 export const FileViewer = ({ 
   file, 
@@ -17,7 +18,7 @@ export const FileViewer = ({
   canGoBack,
   canGoForward
 }: { 
-  file: { path: string, content: string }, 
+  file: RepositoryFile, 
   onClose: () => void, 
   isMaximized: boolean, 
   onToggleMaximize: () => void,
@@ -29,11 +30,16 @@ export const FileViewer = ({
   const extension = file.path.split('.').pop()?.toLowerCase() || 'text';
   const isMarkdownFile = extension === 'md';
   const isTextFile = extension === 'txt';
+  const isPdfFile = extension === 'pdf';
   const [isCopied, setIsCopied] = useState(false);
   const { isFullscreen } = useFullscreen();
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(file.content);
+    if (isPdfFile && file.rawUrl) {
+      await navigator.clipboard.writeText(file.rawUrl);
+    } else {
+      await navigator.clipboard.writeText(file.content);
+    }
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
@@ -64,7 +70,7 @@ export const FileViewer = ({
             </button>
           </div>
           <h3 className="font-medium flex items-center gap-2 truncate text-sm">
-            {(isMarkdownFile || isTextFile) ? (
+            {(isMarkdownFile || isTextFile || isPdfFile) ? (
               <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
             ) : (
               <FileCode className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -76,7 +82,7 @@ export const FileViewer = ({
           <button
             onClick={handleCopy}
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-            title="Copiar conteúdo"
+            title={isPdfFile ? 'Copiar link do PDF' : 'Copiar conteúdo'}
           >
             {isCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
           </button>
@@ -94,7 +100,19 @@ export const FileViewer = ({
       </div>
 
       <div className="flex-1 overflow-auto text-sm bg-[#0d0d0d]">
-        {isMarkdownFile ? (
+        {isPdfFile ? (
+          file.rawUrl ? (
+            <div className="h-full bg-[#101010]">
+              <iframe
+                src={file.rawUrl}
+                title={`Visualizador PDF - ${file.path}`}
+                className="w-full h-full border-0"
+              />
+            </div>
+          ) : (
+            <div className="p-6 text-sm text-amber-300">Não foi possível gerar a URL de visualização do PDF.</div>
+          )
+        ) : isMarkdownFile ? (
           <article className="prose prose-invert prose-sm max-w-none p-6">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{file.content}</ReactMarkdown>
           </article>
