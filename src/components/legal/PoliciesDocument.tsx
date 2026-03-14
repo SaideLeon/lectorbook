@@ -9,7 +9,7 @@ style='font-size:20.0pt;color:#1A1A2E'>Política de Privacidade</span></b></p>
 style='font-size:13.0pt;color:#2E4BC6'>LectorBook</span></b></p>
 
 <p class=MsoNormal align=center style='margin-bottom:20.0pt;text-align:center'><i><span
-style='font-size:10.0pt;color:#888888'>Última atualização: 08 de março de 2026</span></i></p>
+style='font-size:10.0pt;color:#888888'>Última atualização: 14 de março de 2026</span></i></p>
 
 <div style='border:none;border-bottom:solid #DDDDDD 1.0pt;padding:0in 0in 1.0pt 0in'>
 
@@ -59,6 +59,14 @@ assistente IA.</span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Dados de perfil académico (como nome, email, código de acesso e identificadores de estudante) quando fornecidos para autenticação.</span></p>
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Resultados, progresso de leitura e interações com textos para persistência de histórico, gamificação da experiência e geração de ranking.</span></p>
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Gravações de áudio submetidas para
 transcrição de voz.</span></p>
 
@@ -87,13 +95,17 @@ servidor após o encerramento da sessão.</span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='color:#555555'>Não recolhemos dados pessoais de
-identificação como nome, e-mail ou número de telefone.</span></p>
+</span><span style='color:#555555'>Não recolhemos dados pessoais além dos estritamente necessários para autenticação, persistência de progresso, gamificação e ranking de textos.</span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Não utilizamos cookies de rastreamento ou
 tecnologias de perfil de utilizador.</span></p>
+
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Não vendemos nem comercializamos dados dos utilizadores.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -235,8 +247,7 @@ exclusivamente no servidor pelo administrador e nunca é exposto ao navegador.</
 style='color:#555555'>O LectorBook mantém um cache temporário no servidor dos
 dados de repositórios GitHub acedidos, com duração de 12 horas, para reduzir
 chamadas repetidas à API do GitHub. Após este período, os dados em cache são
-eliminados automaticamente. Não existe qualquer base de dados persistente de
-conteúdo de utilizadores.</span></p>
+eliminados automaticamente. Além desse cache técnico, mantemos dados de perfil e desempenho do utilizador necessários para persistência, gamificação e ranking de textos, pelo período necessário ao funcionamento dessas funcionalidades.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -245,11 +256,7 @@ conteúdo de utilizadores.</span></p>
 </div>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;text-align:justify'><span
-style='color:#555555'>Uma vez que o LectorBook não cria perfis de utilizadores
-nem armazena dados pessoais de forma persistente, não há dados pessoais seus
-nos nossos servidores para aceder, corrigir ou eliminar. Para exercer direitos
-relativos a dados processados pelos serviços de terceiros listados na secção 4,
-contacte diretamente esses prestadores.</span></p>
+style='color:#555555'>O LectorBook pode armazenar dados de perfil e desempenho para permitir persistência, gamificação e ranking de textos. Você pode solicitar acesso, correção ou eliminação desses dados através do contacto indicado nesta política. Para exercer direitos relativos a dados processados pelos serviços de terceiros listados na secção 4, contacte diretamente esses prestadores.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -273,7 +280,7 @@ necessitem de eliminação.</span></p>
 style='color:#555555'>Podemos atualizar esta Política de Privacidade
 periodicamente. A data de última atualização será sempre indicada no início do
 documento. A utilização continuada do LectorBook após alterações constitui
-aceitação da política revisada.</span></p>
+aceitação da política revisada. Sempre que possível, destacaremos mudanças materiais nesta página.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -319,7 +326,7 @@ style='font-size:20.0pt;color:#1A1A2E'>Termos de Uso</span></b></p>
 style='font-size:13.0pt;color:#2E4BC6'>LectorBook</span></b></p>
 
 <p class=MsoNormal align=center style='margin-bottom:20.0pt;text-align:center'><i><span
-style='font-size:10.0pt;color:#888888'>Última atualização: 08 de março de 2026</span></i></p>
+style='font-size:10.0pt;color:#888888'>Última atualização: 14 de março de 2026</span></i></p>
 
 <div style='border:none;border-bottom:solid #DDDDDD 1.0pt;padding:0in 0in 1.0pt 0in'>
 
@@ -376,6 +383,11 @@ em formato PDF.</span></p>
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Utilizar funcionalidades de voz (transcrição
 e síntese de áudio).</span></p>
+
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Persistir progresso, gamificar atividades e ranquear textos com base nos dados de interação do utilizador.</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;text-align:justify'><span
 style='color:#555555'>O serviço depende de APIs de terceiros (Google Gemini,
@@ -437,6 +449,11 @@ de Uso da API do GitHub, Google Gemini ou Groq.</span></p>
 </span><span style='color:#555555'>Extrair, raspar ou armazenar em massa
 conteúdo de repositórios de forma automatizada através deste serviço.</span></p>
 
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Utilizar bots ou automações para contornar limites técnicos, captchas ou mecanismos de proteção do serviço.</span></p>
+
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Utilizar o serviço para fins ilegais ou que
@@ -472,6 +489,11 @@ serviço.</span></p>
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Recomendamos definir limites de uso nas suas
 chaves diretamente no Google AI Studio.</span></p>
+
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Você concorda que dados de uso e desempenho poderão ser tratados para persistência, gamificação e ranking de textos dentro da plataforma.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -601,7 +623,7 @@ tribunais competentes da República de Moçambique.</span></p>
 style='color:#555555'>Podemos atualizar estes Termos de Uso a qualquer momento.
 A data de última atualização será indicada no início do documento. A utilização
 continuada do LectorBook após a publicação de alterações constitui aceitação
-dos novos termos.</span></p>
+dos novos termos. Sempre que possível, destacaremos mudanças materiais nesta página.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
