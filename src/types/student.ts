@@ -20,6 +20,19 @@ export interface Student {
   created_at: string;
 }
 
+export interface QuizAnswer {
+  id: string;
+  quiz_result_id: string;
+  question_index: number;
+  question_text: string;
+  options: string[];
+  correct_index: number;
+  selected_index: number | null;
+  is_correct: boolean;
+  explanation: string | null;
+  source: string | null;
+}
+
 export interface QuizResult {
   id: string;
   student_id: string;
@@ -33,6 +46,11 @@ export interface QuizResult {
   created_at: string;
 }
 
+export interface QuizResultWithAnswers extends QuizResult {
+  answers: QuizAnswer[];
+  student_name?: string;
+}
+
 export interface RankingEntry {
   id: string;
   name: string;
@@ -43,6 +61,22 @@ export interface RankingEntry {
   quizzes_completed: number;
   avg_percentage: number;
   last_study_at: string | null;
+  rank_position: number;
+  repos_count?: number;
+  avg_repo_position?: number;
+}
+
+export interface RepoRankingEntry {
+  id: string;
+  name: string;
+  class: string | null;
+  gender: Gender | null;
+  level: StudentLevel;
+  repo_full_name: string;
+  quizzes_count: number;
+  avg_percentage: number;
+  xp_in_repo: number;
+  best_score: number;
   rank_position: number;
 }
 
@@ -73,7 +107,13 @@ export function getLevelFromXp(xp: number): StudentLevel {
   return 'bronze';
 }
 
-export function getXpProgress(xp: number): { current: number; next: number; percentage: number; level: StudentLevel; nextLevel: StudentLevel | null } {
+export function getXpProgress(xp: number): {
+  current: number;
+  next: number;
+  percentage: number;
+  level: StudentLevel;
+  nextLevel: StudentLevel | null;
+} {
   const level = getLevelFromXp(xp);
   const levelIndex = LEVEL_ORDER.indexOf(level);
   const nextLevel = levelIndex < LEVEL_ORDER.length - 1 ? LEVEL_ORDER[levelIndex + 1] : null;

@@ -1,6 +1,7 @@
 // src/hooks/useStudentProfile.ts
 import { useState, useCallback, useEffect } from 'react';
-import { Student, QuizResult, RankingEntry } from '@/types/student';
+import { Student, QuizResult, QuizResultWithAnswers, RankingEntry, RepoRankingEntry } from '@/types/student';
+import { QuizQuestion } from '@/types';
 
 const SESSION_KEY_STORAGE = 'lectorbook-student-session';
 
@@ -21,19 +22,20 @@ function getOrCreateSessionKey(): string {
 export type StudentAuthMode = 'signup' | 'login' | 'edit';
 
 export function useStudentProfile() {
-  const [student, setStudent] = useState<Student | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<StudentAuthMode>('signup');
+  const [student, setStudent]               = useState<Student | null>(null);
+  const [isLoading, setIsLoading]           = useState(false);
+  const [isProfileOpen, setIsProfileOpen]   = useState(false);
+  const [authMode, setAuthMode]             = useState<StudentAuthMode>('signup');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [ranking, setRanking] = useState<RankingEntry[]>([]);
-  const [recentResults, setRecentResults] = useState<QuizResult[]>([]);
-  const [levelUpInfo, setLevelUpInfo] = useState<{ from: string; to: string; xp: number } | null>(null);
-  const [sessionKey, setSessionKey] = useState<string>(() => getOrCreateSessionKey());
+  const [ranking, setRanking]               = useState<RankingEntry[]>([]);
+  const [repoRanking, setRepoRanking]       = useState<RepoRankingEntry[]>([]);
+  const [quizHistory, setQuizHistory]       = useState<QuizResultWithAnswers[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [levelUpInfo, setLevelUpInfo]       = useState<{ from: string; to: string; xp: number } | null>(null);
+  const [sessionKey]                        = useState<string>(() => getOrCreateSessionKey());
   const [lastAccessCode, setLastAccessCode] = useState<string | null>(null);
 
   const persistSessionKey = useCallback((key: string) => {
-    setSessionKey(key);
     if (typeof window !== 'undefined') {
       localStorage.setItem(SESSION_KEY_STORAGE, key);
     }
@@ -53,7 +55,7 @@ export function useStudentProfile() {
         const { student: data } = await res.json();
         setStudent(data);
       }
-    } catch (err) {
+    } catch {
       console.info('[useStudentProfile] Supabase não disponível.');
     } finally {
       setIsLoading(false);
@@ -97,8 +99,7 @@ export function useStudentProfile() {
       setLastAccessCode(null);
       setIsProfileOpen(false);
       return true;
-    } catch (err) {
-      console.error('[useStudentProfile] Erro no login:', err);
+    } catch {
       return false;
     } finally {
       setIsLoading(false);
@@ -131,23 +132,44 @@ export function useStudentProfile() {
     }
   }, [sessionKey]);
 
+  /**
+   * Salva resultado do quiz com respostas individuais.
+   * questions + answers são usados para construir o payload detalhado.
+   */
   const saveQuizResult = useCallback(async (
     score: number,
     totalQuestions: number,
     percentage: number,
     repoFullName?: string,
+    questions?: QuizQuestion[],
+    answers?: (number | null)[],
   ) => {
     if (!sessionKey || !student) return null;
+
+    // Monta payload de respostas individuais
+    const answersPayload = questions && answers
+      ? questions.map((q, idx) => ({
+          question_text:  q.question,
+          options:        q.options,
+          correct_index:  q.correctIndex,
+          selected_index: answers[idx] ?? null,
+          is_correct:     answers[idx] === q.correctIndex,
+          explanation:    q.explanation,
+          source:         q.source,
+        }))
+      : [];
+
     try {
       const res = await fetch('/api/student/quiz-result', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_key: sessionKey,
-          repo_full_name: repoFullName || null,
+          session_key:     sessionKey,
+          repo_full_name:  repoFullName || null,
           score,
           total_questions: totalQuestions,
           percentage,
+          answers:         answersPayload,
         }),
       });
 
@@ -167,33 +189,62 @@ export function useStudentProfile() {
     return null;
   }, [sessionKey, student]);
 
-  const loadRanking = useCallback(async (cls?: string) => {
+  /** Carrega histórico de quizzes do aluno (com respostas) */
+  const loadQuizHistory = useCallback(async (repoFullName?: string) => {
+    if (!sessionKey) return;
+    setIsLoadingHistory(true);
     try {
-      const params = cls ? `?class=${encodeURIComponent(cls)}` : '';
-      const res = await fetch(`/api/student/ranking${params}`);
+      const params = new URLSearchParams({ session_key: sessionKey, limit: '30' });
+      if (repoFullName) params.set('repo', repoFullName);
+      const res = await fetch(`/api/student/quiz-result?${params}`);
       if (res.ok) {
-        const { ranking: data } = await res.json();
-        setRanking(data);
+        const { results } = await res.json();
+        setQuizHistory(results || []);
+      }
+    } catch (err) {
+      console.error('[useStudentProfile] Erro ao carregar histórico:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [sessionKey]);
+
+  /** Carrega ranking global ou por repositório */
+  const loadRanking = useCallback(async (cls?: string, repoFullName?: string) => {
+    try {
+      const params = new URLSearchParams({ limit: '20' });
+      if (cls) params.set('class', cls);
+
+      if (repoFullName) {
+        params.set('repo', repoFullName);
+        params.set('mode', 'repo');
+        const res = await fetch(`/api/student/ranking?${params}`);
+        if (res.ok) {
+          const { ranking: data } = await res.json();
+          setRepoRanking(data || []);
+        }
+      } else {
+        const res = await fetch(`/api/student/ranking?${params}`);
+        if (res.ok) {
+          const { ranking: data } = await res.json();
+          setRanking(data || []);
+        }
       }
     } catch (err) {
       console.error('[useStudentProfile] Erro ao carregar ranking:', err);
     }
   }, []);
 
-  const openSignup = useCallback(() => {
-    setAuthMode('signup');
-    setIsProfileOpen(true);
-  }, []);
-  const openLogin = useCallback(() => {
-    setAuthMode('login');
-    setIsProfileOpen(true);
-  }, []);
-  const openProfile = useCallback(() => {
-    setAuthMode(student ? 'edit' : 'signup');
-    setIsProfileOpen(true);
-  }, [student]);
-  const closeProfile = useCallback(() => setIsProfileOpen(false), []);
-  const openDashboard = useCallback(() => { setIsDashboardOpen(true); loadRanking(student?.class || undefined); }, [student, loadRanking]);
+  const openSignup    = useCallback(() => { setAuthMode('signup'); setIsProfileOpen(true); }, []);
+  const openLogin     = useCallback(() => { setAuthMode('login');  setIsProfileOpen(true); }, []);
+  const openProfile   = useCallback(() => { setAuthMode(student ? 'edit' : 'signup'); setIsProfileOpen(true); }, [student]);
+  const closeProfile  = useCallback(() => setIsProfileOpen(false), []);
+
+  const openDashboard = useCallback(() => {
+    setIsDashboardOpen(true);
+    loadRanking(student?.class || undefined);
+    loadQuizHistory();
+  }, [student, loadRanking, loadQuizHistory]);
+
   const closeDashboard = useCallback(() => setIsDashboardOpen(false), []);
 
   return {
@@ -204,7 +255,9 @@ export function useStudentProfile() {
     authMode,
     isDashboardOpen,
     ranking,
-    recentResults,
+    repoRanking,
+    quizHistory,
+    isLoadingHistory,
     levelUpInfo,
     lastAccessCode,
     loadProfile,
@@ -214,6 +267,7 @@ export function useStudentProfile() {
     updateProfile,
     saveQuizResult,
     loadRanking,
+    loadQuizHistory,
     openSignup,
     openLogin,
     openProfile,
