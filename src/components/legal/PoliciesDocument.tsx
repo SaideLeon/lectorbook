@@ -9,7 +9,7 @@ style='font-size:20.0pt;color:#1A1A2E'>Política de Privacidade</span></b></p>
 style='font-size:13.0pt;color:#2E4BC6'>LectorBook</span></b></p>
 
 <p class=MsoNormal align=center style='margin-bottom:20.0pt;text-align:center'><i><span
-style='font-size:10.0pt;color:#888888'>Última atualização: 08 de março de 2026</span></i></p>
+style='font-size:10.0pt;color:#888888'>Última atualização: 14 de março de 2026</span></i></p>
 
 <div style='border:none;border-bottom:solid #DDDDDD 1.0pt;padding:0in 0in 1.0pt 0in'>
 
@@ -94,6 +94,11 @@ identificação como nome, e-mail ou número de telefone.</span></p>
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Não utilizamos cookies de rastreamento ou
 tecnologias de perfil de utilizador.</span></p>
+
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Não vendemos nem comercializamos dados dos utilizadores.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -273,7 +278,7 @@ necessitem de eliminação.</span></p>
 style='color:#555555'>Podemos atualizar esta Política de Privacidade
 periodicamente. A data de última atualização será sempre indicada no início do
 documento. A utilização continuada do LectorBook após alterações constitui
-aceitação da política revisada.</span></p>
+aceitação da política revisada. Sempre que possível, destacaremos mudanças materiais nesta página.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
@@ -319,7 +324,7 @@ style='font-size:20.0pt;color:#1A1A2E'>Termos de Uso</span></b></p>
 style='font-size:13.0pt;color:#2E4BC6'>LectorBook</span></b></p>
 
 <p class=MsoNormal align=center style='margin-bottom:20.0pt;text-align:center'><i><span
-style='font-size:10.0pt;color:#888888'>Última atualização: 08 de março de 2026</span></i></p>
+style='font-size:10.0pt;color:#888888'>Última atualização: 14 de março de 2026</span></i></p>
 
 <div style='border:none;border-bottom:solid #DDDDDD 1.0pt;padding:0in 0in 1.0pt 0in'>
 
@@ -436,6 +441,11 @@ de Uso da API do GitHub, Google Gemini ou Groq.</span></p>
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='color:#555555'>Extrair, raspar ou armazenar em massa
 conteúdo de repositórios de forma automatizada através deste serviço.</span></p>
+
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='color:#555555'>Utilizar bots ou automações para contornar limites técnicos, captchas ou mecanismos de proteção do serviço.</span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 5.0pt;margin-left:.5in;text-indent:-.25in'>•<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -601,7 +611,7 @@ tribunais competentes da República de Moçambique.</span></p>
 style='color:#555555'>Podemos atualizar estes Termos de Uso a qualquer momento.
 A data de última atualização será indicada no início do documento. A utilização
 continuada do LectorBook após a publicação de alterações constitui aceitação
-dos novos termos.</span></p>
+dos novos termos. Sempre que possível, destacaremos mudanças materiais nesta página.</span></p>
 
 <div style='border:none;border-bottom:solid #2E4BC6 1.0pt;padding:0in 0in 4.0pt 0in'>
 
