@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     payload.append('file', audio, fileName);
     payload.append('model', 'whisper-large-v3-turbo');
     payload.append('temperature', '0');
+    payload.append('language', 'pt');
     payload.append('response_format', 'verbose_json');
 
     const transcriptionResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
