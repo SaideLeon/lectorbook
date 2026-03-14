@@ -153,11 +153,11 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
 
       const isPdf = /\.pdf$/i.test(path);
       const content = isPdf ? '' : await githubApi.getFileContent(owner, repo, path, branch);
-      const encodedPath = path.split('/').map((segment) => encodeURIComponent(segment)).join('/');
+      const pdfPreviewUrl = `/api/github/pdf?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}&path=${encodeURIComponent(path)}`;
       const newFile: RepositoryFile = {
         path,
         content,
-        rawUrl: `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${encodedPath}`,
+        rawUrl: isPdf ? pdfPreviewUrl : undefined,
       };
       setSelectedFile(newFile);
 
