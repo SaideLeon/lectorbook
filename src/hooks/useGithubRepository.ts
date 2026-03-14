@@ -3,7 +3,7 @@
 // para que a ingestão no Supabase saiba em qual repositório filtrar.
 
 import { useState, useCallback, startTransition, useRef, useEffect } from 'react';
-import { FileNode } from '@/types';
+import { FileNode, RepositoryFile } from '@/types';
 import { githubApi } from '@/services/github.api';
 
 const TEACHING_DOC_REGEX = /\.(md|txt)$/i;
@@ -24,13 +24,13 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setErrorRaw] = useState<string | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedFile, setSelectedFile] = useState<{ path: string; content: string } | null>(null);
-  const [teachingDocs, setTeachingDocs] = useState<{ path: string; content: string }[]>([]);
+  const [selectedFile, setSelectedFile] = useState<RepositoryFile | null>(null);
+  const [teachingDocs, setTeachingDocs] = useState<RepositoryFile[]>([]);
   const [headSha, setHeadSha] = useState<string | null>(null);
   const analysisFnRef = useRef<AnalyzeRepositoryFn | null>(null);
 
   // History
-  const [fileHistory, setFileHistory] = useState<{ path: string; content: string }[]>([]);
+  const [fileHistory, setFileHistory] = useState<RepositoryFile[]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
 
   const setError = useCallback((msg: string | null, duration = 5000) => {
@@ -151,8 +151,14 @@ export function useGithubRepository(onRepositoryUpdated?: () => void) {
       if (!match) return;
       const [, owner, repo] = match;
 
-      const content = await githubApi.getFileContent(owner, repo, path, branch);
-      const newFile = { path, content };
+      const isPdf = /\.pdf$/i.test(path);
+      const content = isPdf ? '' : await githubApi.getFileContent(owner, repo, path, branch);
+      const pdfPreviewUrl = `/api/github/pdf?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}&path=${encodeURIComponent(path)}`;
+      const newFile: RepositoryFile = {
+        path,
+        content,
+        rawUrl: isPdf ? pdfPreviewUrl : undefined,
+      };
       setSelectedFile(newFile);
 
       const newHistory = fileHistory.slice(0, currentHistoryIndex + 1);
