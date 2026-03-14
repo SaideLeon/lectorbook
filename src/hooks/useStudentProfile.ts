@@ -62,14 +62,14 @@ export function useStudentProfile() {
     }
   }, [sessionKey]);
 
-  const createProfile = useCallback(async (name: string, cls: string, gender: 'M' | 'F' | '') => {
+  const createProfile = useCallback(async (name: string, email: string, cls: string, gender: 'M' | 'F' | '') => {
     if (!sessionKey) return;
     setIsLoading(true);
     try {
       const res = await fetch('/api/student/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_key: sessionKey, name, class: cls, gender: gender || null }),
+        body: JSON.stringify({ session_key: sessionKey, name, email, class: cls, gender: gender || null }),
       });
       if (res.ok || res.status === 201) {
         const { student: data, access_code } = await res.json();
@@ -106,6 +106,24 @@ export function useStudentProfile() {
     }
   }, [sessionKey]);
 
+  const recoverAccessCode = useCallback(async (email: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/student/recover-access-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      if (!res.ok) return null;
+      const { access_code } = await res.json();
+      return access_code || null;
+    } catch {
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logoutStudent = useCallback(() => {
     setStudent(null);
     setLastAccessCode(null);
@@ -115,7 +133,7 @@ export function useStudentProfile() {
     setIsDashboardOpen(false);
   }, [persistSessionKey]);
 
-  const updateProfile = useCallback(async (updates: { name?: string; class?: string; gender?: 'M' | 'F' | '' }) => {
+  const updateProfile = useCallback(async (updates: { name?: string; email?: string; class?: string; gender?: 'M' | 'F' | '' }) => {
     if (!sessionKey) return;
     try {
       const res = await fetch('/api/student/profile', {
@@ -263,6 +281,7 @@ export function useStudentProfile() {
     loadProfile,
     createProfile,
     loginWithAccessCode,
+    recoverAccessCode,
     logoutStudent,
     updateProfile,
     saveQuizResult,

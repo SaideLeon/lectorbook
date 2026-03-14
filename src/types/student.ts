@@ -7,6 +7,7 @@ export interface Student {
   id: string;
   session_key: string;
   name: string;
+  email: string | null;
   class: string | null;
   course: string;
   gender: Gender | null;

@@ -49,6 +49,7 @@ export default function App() {
     lastAccessCode,
     createProfile,
     loginWithAccessCode,
+    recoverAccessCode,
     updateProfile,
     saveQuizResult,
     openSignup,
@@ -385,7 +386,8 @@ export default function App() {
         onClose={closeProfile}
         onSignUp={createProfile}
         onLogin={loginWithAccessCode}
-        onSaveEdit={(name, cls, gender) => updateProfile({ name, class: cls, gender })}
+        onRecoverAccessCode={recoverAccessCode}
+        onSaveEdit={(name, email, cls, gender) => updateProfile({ name, email, class: cls, gender })}
         existingStudent={student}
         isLoading={isStudentLoading}
         lastAccessCode={lastAccessCode}

@@ -5,6 +5,8 @@ import { getSupabaseServerClient } from '@/server/supabase';
 
 export const runtime = 'nodejs';
 
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+
 function generateAccessCode(): string {
   return `LB-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
@@ -44,9 +46,10 @@ export async function GET(req: NextRequest) {
 // POST /api/student/profile — create new student
 export async function POST(req: NextRequest) {
   try {
-    const { session_key, name, class: cls, gender } = await req.json();
-    if (!session_key || !name) throw new AppError('session_key e name são obrigatórios.', 400);
+    const { session_key, name, email, class: cls, gender } = await req.json();
+    if (!session_key || !name || !email) throw new AppError('session_key, name e email são obrigatórios.', 400);
     if (gender && !['M', 'F'].includes(gender)) throw new AppError('gender deve ser M ou F.', 400);
+    if (!EMAIL_REGEX.test(String(email).trim().toLowerCase())) throw new AppError('email inválido.', 400);
 
     const supabase = getSupabase();
     const accessCode = generateAccessCode();
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
         session_key,
         access_code: accessCode,
         name: name.trim(),
+        email: String(email).trim().toLowerCase(),
         class: cls?.trim() || null,
         gender: gender || null,
         course: 'Contabilidade',
@@ -78,13 +82,15 @@ export async function POST(req: NextRequest) {
 // PATCH /api/student/profile — update profile
 export async function PATCH(req: NextRequest) {
   try {
-    const { session_key, name, class: cls, gender } = await req.json();
+    const { session_key, name, email, class: cls, gender } = await req.json();
     if (!session_key) throw new AppError('session_key obrigatório.', 400);
     if (gender && !['M', 'F'].includes(gender)) throw new AppError('gender deve ser M ou F.', 400);
+    if (email !== undefined && !EMAIL_REGEX.test(String(email).trim().toLowerCase())) throw new AppError('email inválido.', 400);
 
     const supabase = getSupabase();
     const updates: Record<string, any> = {};
     if (name) updates.name = name.trim();
+    if (email !== undefined) updates.email = String(email).trim().toLowerCase();
     if (cls !== undefined) updates.class = cls?.trim() || null;
     if (gender !== undefined) updates.gender = gender || null;
 
