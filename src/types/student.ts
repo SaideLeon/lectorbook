@@ -47,7 +47,12 @@ export interface QuizResult {
 }
 
 export interface QuizResultWithAnswers extends QuizResult {
-  answers: QuizAnswer[];
+  /**
+   * API GET /student/quiz-result returns nested relation as `quiz_answers`.
+   * Keep `answers` as optional alias for backwards compatibility.
+   */
+  quiz_answers: QuizAnswer[];
+  answers?: QuizAnswer[];
   student_name?: string;
 }
 
