@@ -400,6 +400,7 @@ export default function App() {
         onLogin={loginWithAccessCode}
         onRecoverAccessCode={recoverAccessCode}
         onSaveEdit={(name, email, cls, gender) => updateProfile({ name, email, class: cls, gender })}
+        onSwitchToSignUp={openSignup}
         existingStudent={student}
         isLoading={isStudentLoading}
         lastAccessCode={lastAccessCode}
