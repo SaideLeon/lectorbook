@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { AppError } from '@/app/api/_utils';
 
 export function getGithubHeaders(req: NextRequest) {
   const headers: Record<string, string> = {
@@ -10,6 +11,23 @@ export function getGithubHeaders(req: NextRequest) {
   if (githubToken) headers.Authorization = `Bearer ${githubToken}`;
 
   return headers;
+}
+
+export async function assertRepositoryIsInternal(req: NextRequest, owner: string, repo: string) {
+  const headers = getGithubHeaders(req);
+  const targetFullName = `${owner}/${repo}`.toLowerCase();
+  const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100&type=all', { headers });
+
+  if (!response.ok) {
+    throw new AppError('Failed to validate repository access', response.status, await response.json());
+  }
+
+  const repos = (await response.json()) as Array<{ full_name?: string }>;
+  const isAllowed = repos.some((entry) => entry.full_name?.toLowerCase() === targetFullName);
+
+  if (!isAllowed) {
+    throw new AppError('Repository is not available in the authenticated account repositories list', 403);
+  }
 }
 
 export function getAppUrl(req: NextRequest) {
