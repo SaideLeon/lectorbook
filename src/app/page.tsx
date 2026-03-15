@@ -1,37 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import App from '@/App';
 import { ToastProvider } from '@/components/ui/Toast';
 import { FullscreenProvider } from '@/contexts/FullscreenContext';
 import LandingPage from '@/components/landing/LandingPage';
 
-const ENTERED_APP_KEY = 'lectorbook-entered-app';
-
 export default function HomePage() {
-  // Start with null to avoid SSR mismatch
-  const [showApp, setShowApp] = useState<boolean | null>(null);
-
-  // Restore previous session preference on mount
-  useEffect(() => {
-    const previouslyEntered = localStorage.getItem(ENTERED_APP_KEY) === 'true';
-    setShowApp(previouslyEntered);
-  }, []);
+  const [showApp, setShowApp] = useState(false);
 
   const handleEnterApp = () => {
-    localStorage.setItem(ENTERED_APP_KEY, 'true');
     setShowApp(true);
   };
-
-  // Avoid flash before hydration
-  if (showApp === null) {
-    return (
-      <div className="h-screen w-screen bg-[#080810] flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-indigo-500/40 border-t-indigo-400 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <ToastProvider>

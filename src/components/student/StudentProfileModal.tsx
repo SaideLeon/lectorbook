@@ -13,6 +13,7 @@ interface StudentProfileModalProps {
   onLogin: (accessCode: string) => Promise<boolean>;
   onRecoverAccessCode: (email: string) => Promise<string | null>;
   onSaveEdit: (name: string, email: string, cls: string, gender: 'M' | 'F' | '') => Promise<void>;
+  onSwitchToSignUp?: () => void;
   existingStudent?: Student | null;
   isLoading?: boolean;
   lastAccessCode?: string | null;
@@ -26,6 +27,7 @@ export function StudentProfileModal({
   onLogin,
   onRecoverAccessCode,
   onSaveEdit,
+  onSwitchToSignUp,
   existingStudent,
   isLoading,
   lastAccessCode,
@@ -110,6 +112,16 @@ export function StudentProfileModal({
               />
             </div>
             <p className="text-[11px] text-gray-500">Use o código recebido no cadastro para entrar em qualquer dispositivo.</p>
+            <p className="text-[11px] text-gray-500">
+              Ainda não tem cadastro?{' '}
+              <button
+                type="button"
+                onClick={onSwitchToSignUp}
+                className="text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
+              >
+                Ir para inscrição
+              </button>
+            </p>
             <div className="pt-2 border-t border-white/10 space-y-2">
               <label className="text-xs text-gray-400">Recuperar código por e-mail</label>
               <div className="flex gap-2">
