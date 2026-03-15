@@ -48,15 +48,8 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
             Lectorbook
           </h1>
-          <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-            Acompanhe de perto a minha jornada no Curso de Contabilidade CV3: cada desafio, aprendizado e conquista enquanto construo meu conhecimento na área financeira e contábil.
-          </p>
         </div>
 
-        <div className="max-w-2xl mx-auto text-sm text-gray-400 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-          A análise agora aceita apenas repositórios internos listados abaixo, com base no token do GitHub configurado.
-        </div>
-        
 
           <div className="mt-16 pt-12 border-t border-white/5 space-y-8">
             <div className="space-y-2">
