@@ -122,6 +122,12 @@ export default function App() {
 
   // Handlers
   const handleAnalyze = async (url: string) => {
+    if (!student) {
+      showToast('Faça login para acessar os módulos.', 'info');
+      openLogin();
+      return;
+    }
+
     setActiveMode('chat');
     await analyzeRepository(url, performInitialAnalysis);
     setActiveMobileTab('chat');
@@ -229,7 +235,13 @@ export default function App() {
         <AnimatePresence mode="wait">
           {!repoUrl ? (
             <div className="h-full overflow-y-auto p-4 md:p-0">
-              <RepoInput key="input" onAnalyze={handleAnalyze} isLoading={isRepoLoading} />
+              <RepoInput
+                key="input"
+                onAnalyze={handleAnalyze}
+                isLoading={isRepoLoading}
+                requiresLogin={!student}
+                onRequireLogin={() => { showToast('Faça login para acessar os módulos.', 'info'); openLogin(); }}
+              />
             </div>
           ) : (
             <motion.div
