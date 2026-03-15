@@ -3,7 +3,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Github, Search, Loader2, Lock, Unlock, Star, GitFork, RefreshCw, Filter } from 'lucide-react';
 import { githubApi } from '@/services/github.api';
 
-export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) => void, isLoading: boolean }) => {
+export const RepoInput = ({
+  onAnalyze,
+  isLoading,
+  requiresLogin = false,
+  onRequireLogin,
+}: {
+  onAnalyze: (url: string) => void,
+  isLoading: boolean,
+  requiresLogin?: boolean,
+  onRequireLogin?: () => void,
+}) => {
   const [userRepos, setUserRepos] = useState<any[]>([]);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
@@ -37,6 +47,14 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
 
   const displayedRepos = showAllRepos ? filteredRepos : filteredRepos.slice(0, 6);
 
+  const handleRepositoryClick = (repoUrl: string) => {
+    if (requiresLogin) {
+      onRequireLogin?.();
+      return;
+    }
+    onAnalyze(repoUrl);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 py-12">
       <motion.div 
@@ -65,6 +83,12 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
                 <Github className="w-6 h-6 text-indigo-400" />
                 Seus Repositórios
               </h3>
+
+              {requiresLogin && (
+                <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-400/20 rounded-lg px-3 py-2">
+                  Faça login para desbloquear e abrir os módulos de contabilidade.
+                </p>
+              )}
               
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <div className="relative flex-1 md:w-64">
@@ -114,8 +138,8 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         key={repo.id}
-                        onClick={() => onAnalyze(repo.html_url)}
-                        disabled={isLoading}
+                        onClick={() => handleRepositoryClick(repo.html_url)}
+                        disabled={isLoading || requiresLogin}
                         className="group flex flex-col gap-3 p-5 bg-[#111] border border-white/5 hover:border-indigo-500/50 rounded-xl transition-all hover:bg-white/5 relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
