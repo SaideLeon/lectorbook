@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, jsonError } from '@/app/api/_utils';
-import { getGithubHeaders } from '@/server/github';
+import { getGithubHeaders, assertRepositoryIsInternal } from '@/server/github';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
     if (!owner || !repo || !filePath || !branch) {
       throw new AppError('Missing required parameters', 400);
     }
+
+    await assertRepositoryIsInternal(req, owner, repo);
 
     if (!/\.pdf$/i.test(filePath)) {
       throw new AppError('Only PDF files are supported on this endpoint', 400);

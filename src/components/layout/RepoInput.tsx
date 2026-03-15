@@ -4,7 +4,6 @@ import { Github, Search, Loader2, Lock, Unlock, Star, GitFork, RefreshCw, Filter
 import { githubApi } from '@/services/github.api';
 
 export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) => void, isLoading: boolean }) => {
-  const [url, setUrl] = useState('');
   const [userRepos, setUserRepos] = useState<any[]>([]);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
@@ -29,20 +28,12 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
     }
   };
 
-
-
-
   const filteredRepos = useMemo(() => {
     return userRepos.filter(repo => 
       repo.full_name.toLowerCase().includes(repoSearch.toLowerCase()) ||
       (repo.description && repo.description.toLowerCase().includes(repoSearch.toLowerCase()))
     );
   }, [userRepos, repoSearch]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (url.trim()) onAnalyze(url);
-  };
 
   const displayedRepos = showAllRepos ? filteredRepos : filteredRepos.slice(0, 6);
 
@@ -62,30 +53,9 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="relative max-w-xl mx-auto w-full">
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl opacity-30 group-hover:opacity-50 transition duration-500 blur"></div>
-            <div className="relative flex items-center bg-[#111] rounded-xl border border-white/10 p-1.5 md:p-2">
-              <Github className="w-5 h-5 md:w-6 md:h-6 text-gray-400 ml-2 md:ml-3 shrink-0" />
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Link do repositório..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 px-2 md:px-4 py-2 text-sm md:text-base min-w-0"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !url}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 md:px-6 py-2 md:py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                <span className="hidden md:inline">Analisar</span>
-              </button>
-            </div>
-          </div>
-        </form>
+        <div className="max-w-2xl mx-auto text-sm text-gray-400 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+          A análise agora aceita apenas repositórios internos listados abaixo, com base no token do GitHub configurado.
+        </div>
         
 
           <div className="mt-16 pt-12 border-t border-white/5 space-y-8">
@@ -110,7 +80,7 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
                     type="text"
                     value={repoSearch}
                     onChange={(e) => setRepoSearch(e.target.value)}
-                    placeholder="Filtrar repositórios..."
+                    placeholder="Pesquisar repositórios internos..."
                     className="w-full bg-[#111] border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   />
                 </div>
@@ -152,7 +122,8 @@ export const RepoInput = ({ onAnalyze, isLoading }: { onAnalyze: (url: string) =
                         exit={{ opacity: 0, scale: 0.9 }}
                         key={repo.id}
                         onClick={() => onAnalyze(repo.html_url)}
-                        className="group flex flex-col gap-3 p-5 bg-[#111] border border-white/5 hover:border-indigo-500/50 rounded-xl transition-all hover:bg-white/5 relative overflow-hidden"
+                        disabled={isLoading}
+                        className="group flex flex-col gap-3 p-5 bg-[#111] border border-white/5 hover:border-indigo-500/50 rounded-xl transition-all hover:bg-white/5 relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Search className="w-4 h-4 text-indigo-400" />
