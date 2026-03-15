@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, jsonError } from '@/app/api/_utils';
-import { getGithubHeaders } from '@/server/github';
+import { getGithubHeaders, assertRepositoryIsInternal } from '@/server/github';
 import { GithubRepoInfo } from '@/server/github.types';
 
 export const runtime = 'nodejs';
@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
     const branch = req.nextUrl.searchParams.get('branch');
 
     if (!owner || !repo) throw new AppError('Owner and repo are required', 400);
+
+    await assertRepositoryIsInternal(req, owner, repo);
 
     const headers = getGithubHeaders(req);
     let targetBranch = branch || '';
