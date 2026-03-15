@@ -365,9 +365,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           animate="show"
           className="max-w-xl text-base md:text-lg text-gray-500 leading-relaxed mb-10"
         >
-          Transforme seu repositório de módulos de contabilidade em uma experiência
-          de aprendizagem completa — com fichas de leitura, quizzes gerados por
-          IA e ranking entre colegas.
+          Faça login para transformar seu repositório de módulos de
+          contabilidade em uma experiência de aprendizagem completa — com
+          fichas de leitura, quizzes gerados por IA e ranking entre colegas.
         </motion.p>
 
         {/* CTAs */}
@@ -383,7 +383,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3.5 rounded-xl font-bold text-sm transition-all hover:shadow-2xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
           >
             <Zap className="w-4 h-4" />
-            Começar agora
+            Entrar para começar
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </button>
           <a
@@ -833,14 +833,14 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
               </span>
             </h2>
             <p className="text-gray-500 mb-10 leading-relaxed">
-              Selecione um módulo de contabilidade e comece agora. Sem cadastro obrigatório, sem complicação.
+              Faça login ou inscreva-se para acessar os módulos de contabilidade e começar seus estudos.
             </p>
             <button
               onClick={onEnterApp}
               className="group inline-flex items-center gap-2.5 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold text-base transition-all hover:shadow-2xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
             >
               <Zap className="w-5 h-5" />
-              Abrir o LectorBook
+              Entrar no LectorBook
               <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
             </button>
             <p className="mt-5 text-xs text-gray-700">
