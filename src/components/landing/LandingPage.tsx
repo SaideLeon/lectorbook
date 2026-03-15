@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react';
 import {
-  BookOpen, Github, Brain, Trophy, Star, Zap, ArrowRight,
+  BookOpen, Brain, Trophy, Star, Zap, ArrowRight,
   CheckCircle2, GitBranch, MessageSquare, FileText,
   BarChart3, Shield, Volume2, Search, Mic,
   ChevronRight, Flame, Globe, Medal, Crown,
@@ -338,7 +338,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-xs font-semibold text-indigo-300 tracking-wide uppercase">
-            Tutor de Leitura com IA · GitHub Integrado
+            Tutor de Leitura com IA · Módulos de Contabilidade
           </span>
         </motion.div>
 
@@ -365,9 +365,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           animate="show"
           className="max-w-xl text-base md:text-lg text-gray-500 leading-relaxed mb-10"
         >
-          Transforme qualquer repositório GitHub em uma experiência de
-          aprendizagem completa — com fichas de leitura, quizzes gerados por IA
-          e ranking entre colegas.
+          Faça login para transformar seu repositório de módulos de
+          contabilidade em uma experiência de aprendizagem completa — com
+          fichas de leitura, quizzes gerados por IA e ranking entre colegas.
         </motion.p>
 
         {/* CTAs */}
@@ -383,7 +383,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3.5 rounded-xl font-bold text-sm transition-all hover:shadow-2xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
           >
             <Zap className="w-4 h-4" />
-            Começar agora
+            Entrar para começar
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </button>
           <a
@@ -414,7 +414,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       <div className="border-y border-white/[0.06] bg-white/[0.02]">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-12 py-10 px-6">
           {[
-            { icon: Github, val: '∞', lbl: 'Repositórios suportados' },
+            { icon: BookOpen, val: '∞', lbl: 'Módulos suportados' },
             { icon: Brain, val: 'IA', lbl: 'Quizzes automáticos' },
             { icon: Medal, val: '5', lbl: 'Níveis de progressão' },
             { icon: Globe, val: '100%', lbl: 'Gratuito para estudantes' },
@@ -470,10 +470,10 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StepCard
-            icon={Github}
+            icon={BookOpen}
             step="01 — Conectar"
-            title="Cole o link do repositório"
-            description="Qualquer repositório público do GitHub. O LectorBook extrai automaticamente os arquivos e o conteúdo relevante."
+            title="Selecione um módulo de contabilidade"
+            description="Escolha um repositório de módulos de contabilidade da lista interna. O LectorBook extrai automaticamente os arquivos e o conteúdo relevante."
             color="bg-indigo-600/80"
             delay={0}
           />
@@ -522,8 +522,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                   </span>
                 </h2>
                 <p className="text-gray-500 leading-relaxed mb-10">
-                  Uma plataforma completa que combina GitHub, IA e gamificação
-                  para criar a melhor experiência de estudo.
+                  Uma plataforma completa que combina repositório de módulos de
+                  contabilidade, IA e gamificação para criar a melhor
+                  experiência de estudo.
                 </p>
               </motion.div>
 
@@ -832,14 +833,14 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
               </span>
             </h2>
             <p className="text-gray-500 mb-10 leading-relaxed">
-              Cole um link de repositório e comece agora. Sem cadastro obrigatório, sem complicação.
+              Faça login ou inscreva-se para acessar os módulos de contabilidade e começar seus estudos.
             </p>
             <button
               onClick={onEnterApp}
               className="group inline-flex items-center gap-2.5 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold text-base transition-all hover:shadow-2xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
             >
               <Zap className="w-5 h-5" />
-              Abrir o LectorBook
+              Entrar no LectorBook
               <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
             </button>
             <p className="mt-5 text-xs text-gray-700">
@@ -860,7 +861,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             {[
               { label: 'Políticas de Uso', href: '/politicas' },
               { label: 'AI Studio', href: 'https://aistudio.google.com/api-keys' },
-              { label: 'GitHub', href: '#' },
+              { label: 'Módulos', href: '#' },
             ].map(({ label, href }) => (
               <a
                 key={label}
