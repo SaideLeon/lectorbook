@@ -139,8 +139,8 @@ export const RepoInput = ({
                         exit={{ opacity: 0, scale: 0.9 }}
                         key={repo.id}
                         onClick={() => handleRepositoryClick(repo.html_url)}
-                        disabled={isLoading || requiresLogin}
-                        className="group flex flex-col gap-3 p-5 bg-[#111] border border-white/5 hover:border-indigo-500/50 rounded-xl transition-all hover:bg-white/5 relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={isLoading}
+                        className={`group flex flex-col gap-3 p-5 bg-[#111] border border-white/5 hover:border-indigo-500/50 rounded-xl transition-all hover:bg-white/5 relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed ${requiresLogin ? 'cursor-pointer ring-1 ring-amber-400/20' : ''}`}
                       >
                         <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Search className="w-4 h-4 text-indigo-400" />
