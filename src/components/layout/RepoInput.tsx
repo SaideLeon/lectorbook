@@ -70,14 +70,6 @@ export const RepoInput = ({
 
 
           <div className="mt-16 pt-12 border-t border-white/5 space-y-8">
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500">
-                Para usar os recursos de IA, gere sua API Key no AI Studio: <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer" className="font-mono text-indigo-400 hover:text-indigo-300 underline">https://aistudio.google.com/api-keys</a>.
-              </p>
-              <p className="text-xs text-gray-500">
-                Consulte também nossas <a href="/politicas" className="text-indigo-400 hover:text-indigo-300 underline">Políticas de Uso e Privacidade</a>.
-              </p>
-            </div>
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <h3 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Github className="w-6 h-6 text-indigo-400" />
@@ -200,6 +192,15 @@ export const RepoInput = ({
                 )}
               </div>
             )}
+
+            <div className="space-y-2 pt-2 border-t border-white/5">
+              <p className="text-xs text-gray-500">
+                Para usar os recursos de IA, gere sua API Key no AI Studio: <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer" className="font-mono text-indigo-400 hover:text-indigo-300 underline">https://aistudio.google.com/api-keys</a>.
+              </p>
+              <p className="text-xs text-gray-500">
+                Consulte também nossas <a href="/politicas" className="text-indigo-400 hover:text-indigo-300 underline">Políticas de Uso e Privacidade</a>.
+              </p>
+            </div>
           </div>
       </motion.div>
     </div>
