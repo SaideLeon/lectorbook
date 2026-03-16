@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { groqChatStream } from '@/server/groq.service';
 import { jsonError } from '@/app/api/_utils';
 import { buildRelevantContext, createSearchQuery } from '@/server/semantic-search';
+import { isSupabaseConfigured, retrieveWithLangChain } from '@/server/langchain.service';
 
 type GroqMessage = {
   role: 'user' | 'assistant';
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       context,
       contextFiles = [],
       apiKey,
+      repoFullName,
     } = await req.json();
 
     const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
@@ -37,12 +39,44 @@ export async function POST(req: NextRequest) {
     }).format(new Date());
 
     const retrievalQuery = createSearchQuery(currentInput || '', history || []);
-    const { renderedContext: docsContext, selectedChunks } = await buildRelevantContext({
-      query: retrievalQuery,
-      contextFiles: contextFiles || [],
-      apiKey,
-      maxChunks: 10,
-    });
+
+    let docsContext = 'Nenhum trecho relevante encontrado para a pergunta.';
+    let selectedChunksCount = 0;
+
+    if (isSupabaseConfigured() && repoFullName) {
+      const retrieval = await retrieveWithLangChain({
+        query: retrievalQuery,
+        chatHistory: history || [],
+        repoFullName,
+        apiKey,
+        k: 6,
+      });
+      docsContext = retrieval.renderedContext;
+      selectedChunksCount = retrieval.selectedChunks.length;
+    } else {
+      const retrieval = await buildRelevantContext({
+        query: retrievalQuery,
+        contextFiles: contextFiles || [],
+        apiKey,
+        maxChunks: 6,
+      });
+      docsContext = retrieval.renderedContext;
+      selectedChunksCount = retrieval.selectedChunks.length;
+    }
+
+    const compactHistory = (history || [])
+      .slice(-8)
+      .map((h: any) => ({
+        role: h.role,
+        content:
+          typeof h.content === 'string' && h.content.length > 1600
+            ? `${h.content.slice(0, 1600)}\n\n[... histórico truncado para reduzir tokens ...]`
+            : (h.content || ''),
+      }));
+
+    const compactDocsContext = docsContext.length > 9000
+      ? `${docsContext.slice(0, 9000)}\n\n[... contexto recuperado truncado para respeitar limite de tokens ...]`
+      : docsContext;
 
     const systemInstruction = `
       Você é o Tutor de Leitura principal chamado "Lector".
@@ -73,9 +107,9 @@ export async function POST(req: NextRequest) {
         },
         {
           role: 'user',
-          content: `Trechos recuperados por busca semântica:\n${docsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunks.length}.`,
+          content: `Trechos recuperados por busca semântica:\n${compactDocsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunksCount}.`,
         },
-        ...(history || []).map((h: any) => ({
+        ...compactHistory.map((h: any) => ({
           role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
           content: h.content as string,
         })),
