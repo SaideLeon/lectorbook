@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Loader2,
@@ -129,14 +129,6 @@ export default function App() {
     if (selectedFile && activeMobileTab === 'files') setActiveMobileTab('preview');
   }, [selectedFile, maximizedPanel]);
 
-  useEffect(() => {
-    if (!repoUrl) {
-      setSelectedContextTargets([]);
-      return;
-    }
-    setSelectedContextTargets([]);
-  }, [repoUrl]);
-
   const contextOptions = useMemo(() => {
     const folders = files
       .filter((f) => f.type === 'tree')
@@ -150,6 +142,26 @@ export default function App() {
 
     return [...folders, ...docs];
   }, [files]);
+
+  const defaultContextAppliedRepoRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!repoUrl) {
+      defaultContextAppliedRepoRef.current = null;
+      setSelectedContextTargets([]);
+      return;
+    }
+
+    if (defaultContextAppliedRepoRef.current === repoUrl || contextOptions.length === 0) return;
+
+    const defaultAulaFiles = contextOptions
+      .filter((option) => option.type === 'file' && option.path.toLowerCase().startsWith('aula/'))
+      .slice(0, 3)
+      .map((option) => option.path);
+
+    setSelectedContextTargets(defaultAulaFiles);
+    defaultContextAppliedRepoRef.current = repoUrl;
+  }, [repoUrl, contextOptions]);
 
   const selectedContextFiles = useMemo(() => {
     if (selectedContextTargets.length === 0) return [];
@@ -326,8 +338,8 @@ export default function App() {
     </button>
   );
 
-  const ContextSelector = ({ compact = false }: { compact?: boolean }) => (
-    <div className={cn('mb-4 rounded-xl border border-white/10 bg-[#0f0f0f] overflow-hidden', compact && 'mb-3')}>
+  const ContextSelector = () => (
+    <div className="mb-4 rounded-xl border border-white/10 bg-[#0f0f0f] overflow-hidden">
       <button
         onClick={() => setContextCollapsed((value) => !value)}
         className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors"
@@ -540,7 +552,6 @@ export default function App() {
                   <h2 className="font-semibold truncate text-sm" title={repoUrl}>{repoUrl.split('github.com/')[1]}</h2>
                   <div className="mt-2"><SidebarButtons /></div>
                 </div>
-                <ContextSelector />
                 <FileTree files={files} onSelect={handleFileSelect} />
               </div>
 
@@ -564,7 +575,6 @@ export default function App() {
                           <SidebarButtons />
                         </div>
                       </div>
-                      <ContextSelector compact />
                       <div className="flex-1 overflow-hidden flex flex-col">
                         <FileTree files={files} onSelect={handleFileSelect} />
                       </div>
@@ -612,6 +622,7 @@ export default function App() {
                         isTranscribingAudio={isTranscribingAudio}
                         onSynthesizeAudio={synthesizeMessageAudio}
                         isSynthesizingAudio={isSynthesizingAudio}
+                        contextSelector={<ContextSelector />}
                       />
                     </motion.div>
                   )}
