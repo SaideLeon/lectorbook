@@ -232,6 +232,10 @@ export function useAIChat() {
               return next;
             });
           },
+          onError: (message, callbackError) => {
+            const errorDetails = callbackError instanceof Error ? callbackError.message : String(callbackError ?? 'sem detalhes');
+            appendLog(`${message} Detalhes: ${errorDetails}`);
+          },
         },
         activeKey,
         sessionId,           // <-- passa sessionId para persistência
