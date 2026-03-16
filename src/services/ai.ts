@@ -130,11 +130,16 @@ export async function thinkAndSuggestStream(
   callbacks: {
     onChunk: (text: string) => void;
     onDone?: (relatedLinks: { title: string; url: string }[]) => void;
+    onError?: (message: string, error?: unknown) => void;
   },
   apiKey?: string,
   sessionId?: string,       // <-- novo: UUID de sessão para persistência
   repoFullName?: string,    // <-- novo: "usuario/repo" para filtro no Supabase
 ) {
+  const notifyCallbackError = (message: string, error?: unknown) => {
+    callbacks.onError?.(message, error);
+  };
+
   const response = await fetch('/api/ai/think', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -167,7 +172,15 @@ export async function thinkAndSuggestStream(
   let buffer = '';
 
   while (true) {
-    const { done, value } = await reader.read();
+    let chunkResult: ReadableStreamReadResult<Uint8Array>;
+    try {
+      chunkResult = await reader.read();
+    } catch (error) {
+      notifyCallbackError('Falha ao ler dados do stream da IA.', error);
+      throw error;
+    }
+
+    const { done, value } = chunkResult;
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
@@ -176,17 +189,61 @@ export async function thinkAndSuggestStream(
 
     for (const line of lines) {
       if (!line.trim()) continue;
-      const event = JSON.parse(line) as StreamEvent;
-      if (event.type === 'chunk') { callbacks.onChunk(event.text || ''); continue; }
-      if (event.type === 'done') { callbacks.onDone?.(event.relatedLinks || []); continue; }
+      let event: StreamEvent;
+      try {
+        event = JSON.parse(line) as StreamEvent;
+      } catch (error) {
+        notifyCallbackError('Falha ao interpretar um evento de stream da IA.', error);
+        throw error;
+      }
+
+      if (event.type === 'chunk') {
+        try {
+          callbacks.onChunk(event.text || '');
+        } catch (error) {
+          notifyCallbackError('Erro no callback onChunk durante o streaming.', error);
+          throw error;
+        }
+        continue;
+      }
+      if (event.type === 'done') {
+        try {
+          callbacks.onDone?.(event.relatedLinks || []);
+        } catch (error) {
+          notifyCallbackError('Erro no callback onDone ao finalizar o streaming.', error);
+          throw error;
+        }
+        continue;
+      }
       if (event.type === 'error') throw new Error(event.message || 'Erro desconhecido no streaming da IA.');
     }
   }
 
   if (buffer.trim()) {
-    const event = JSON.parse(buffer) as StreamEvent;
-    if (event.type === 'chunk') callbacks.onChunk(event.text || '');
-    if (event.type === 'done') callbacks.onDone?.(event.relatedLinks || []);
+    let event: StreamEvent;
+    try {
+      event = JSON.parse(buffer) as StreamEvent;
+    } catch (error) {
+      notifyCallbackError('Falha ao interpretar o evento final do stream da IA.', error);
+      throw error;
+    }
+
+    if (event.type === 'chunk') {
+      try {
+        callbacks.onChunk(event.text || '');
+      } catch (error) {
+        notifyCallbackError('Erro no callback onChunk ao processar o evento final.', error);
+        throw error;
+      }
+    }
+    if (event.type === 'done') {
+      try {
+        callbacks.onDone?.(event.relatedLinks || []);
+      } catch (error) {
+        notifyCallbackError('Erro no callback onDone ao processar o evento final.', error);
+        throw error;
+      }
+    }
     if (event.type === 'error') throw new Error(event.message || 'Erro desconhecido no streaming da IA.');
   }
 }
