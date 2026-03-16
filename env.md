@@ -4,7 +4,7 @@
 GEMINI_API_KEY="MY_GEMINI_API_KEY"
 
 # Modelo de embeddings (opcional): o padrão é gemini-embedding-001.
-# Sobrescreva apenas se a tua conta tiver acesso a outro modelo de embedding.
+# Recomendado para cenários apenas de texto (RAG textual).
 GEMINI_EMBEDDING_MODEL=
 
 # ─── URL da Aplicação ──────────────────────────────────────────────────────────

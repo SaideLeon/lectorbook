@@ -21,5 +21,10 @@ export function getAIClient(apiKey?: string) {
  */
 export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
 
+/**
+ * Mantemos fallback em `gemini-embedding-001` para fluxos textuais de RAG.
+ */
+export const EMBEDDING_FALLBACK_MODEL = 'gemini-embedding-001';
+
 export const ANALYST_MODEL = 'gemini-3.1-pro-preview';
 export const FALLBACK_MODEL = 'gemini-3-flash-preview';

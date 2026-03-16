@@ -1,4 +1,4 @@
-import { EMBEDDING_MODEL, getAIClient } from '@/server/gemini.service';
+import { EMBEDDING_FALLBACK_MODEL, EMBEDDING_MODEL, getAIClient } from '@/server/gemini.service';
 
 type ContextFile = { path: string; content: string };
 
@@ -78,25 +78,37 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dot(a, b) / denom;
 }
 
-async function embedText(text: string, apiKey?: string): Promise<number[] | null> {
-  const key = `${text.length}:${text.slice(0, 300)}`;
+async function embedText(
+  text: string,
+  apiKey?: string,
+  taskType: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY' = 'RETRIEVAL_DOCUMENT',
+): Promise<number[] | null> {
+  const key = `${taskType}:${text.length}:${text.slice(0, 300)}`;
   if (embeddingCache.has(key)) return embeddingCache.get(key)!;
 
-  try {
-    const ai = getAIClient(apiKey);
-    const response: any = await ai.models.embedContent({
-      model: EMBEDDING_MODEL,
-      contents: text,
-      config: { taskType: 'RETRIEVAL_DOCUMENT' },
-    });
+  const ai = getAIClient(apiKey);
+  const modelsToTry = [EMBEDDING_MODEL, EMBEDDING_FALLBACK_MODEL].filter(
+    (model, index, arr) => arr.indexOf(model) === index,
+  );
 
-    const values = response?.embeddings?.[0]?.values || response?.embedding?.values;
-    if (!Array.isArray(values) || values.length === 0) return null;
-    embeddingCache.set(key, values);
-    return values;
-  } catch {
-    return null;
+  for (const model of modelsToTry) {
+    try {
+      const response: any = await ai.models.embedContent({
+        model,
+        contents: text,
+        config: { taskType },
+      });
+
+      const values = response?.embeddings?.[0]?.values || response?.embedding?.values;
+      if (!Array.isArray(values) || values.length === 0) continue;
+      embeddingCache.set(key, values);
+      return values;
+    } catch {
+      // tenta próximo modelo de embedding disponível para esta conta/chave
+    }
   }
+
+  return null;
 }
 
 export function createSearchQuery(currentInput: string, history: Array<{ role: string; content: string }> = []): string {
@@ -139,7 +151,7 @@ export async function buildRelevantContext(options: {
   const lexicalSorted = chunks.sort((a, b) => b.lexicalScore - a.lexicalScore);
   const embedCandidates = lexicalSorted.slice(0, MAX_EMBED_CANDIDATES);
 
-  const queryEmbedding = await embedText(query, apiKey);
+  const queryEmbedding = await embedText(query, apiKey, 'RETRIEVAL_QUERY');
   if (queryEmbedding) {
     const vectors = await Promise.all(embedCandidates.map((c) => embedText(c.text, apiKey)));
     embedCandidates.forEach((chunk, i) => {
