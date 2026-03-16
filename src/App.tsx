@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, FileText, MessageSquare, Files, Eye, Menu, X as CloseIcon, BookOpen } from 'lucide-react';
+import {
+  Loader2,
+  FileText,
+  MessageSquare,
+  Eye,
+  Menu,
+  X as CloseIcon,
+  BookOpen,
+  ChevronDown,
+  FolderOpen,
+  Search,
+  CheckCheck,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Components
@@ -248,37 +261,242 @@ export default function App() {
     </div>
   );
 
-  const ContextSelector = () => (
-    <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold text-gray-300">Contexto para IA</h3>
-        <span className="text-[10px] text-gray-400">{selectedContextFiles.length} arquivo(s)</span>
+  const extractRA = useCallback((path: string) => {
+    const match = path.match(/RA(\d+)/i);
+    return match ? Number.parseInt(match[1], 10) : null;
+  }, []);
+
+  const [contextQuery, setContextQuery] = useState('');
+  const [contextCollapsed, setContextCollapsed] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState({ folders: false, learning: false, docs: false });
+
+  const filteredContextOptions = useMemo(() => {
+    if (!contextQuery.trim()) return contextOptions;
+    const normalized = contextQuery.toLowerCase();
+    return contextOptions.filter((option) => option.path.toLowerCase().includes(normalized));
+  }, [contextOptions, contextQuery]);
+
+  const groupedContext = useMemo(() => {
+    const folders = filteredContextOptions.filter((option) => option.type === 'folder');
+    const learning = filteredContextOptions
+      .filter((option) => option.type === 'file' && extractRA(option.path) !== null)
+      .sort((a, b) => (extractRA(a.path) ?? 0) - (extractRA(b.path) ?? 0));
+    const docs = filteredContextOptions.filter(
+      (option) => option.type === 'file' && extractRA(option.path) === null,
+    );
+
+    return { folders, learning, docs };
+  }, [extractRA, filteredContextOptions]);
+
+  const allContextPaths = useMemo(() => contextOptions.map((option) => option.path), [contextOptions]);
+  const allContextSelected =
+    allContextPaths.length > 0 && allContextPaths.every((path) => selectedContextTargets.includes(path));
+
+  const toggleContextOption = (path: string, checked: boolean) => {
+    setSelectedContextTargets((prev) => {
+      if (checked) return prev.includes(path) ? prev : [...prev, path];
+      return prev.filter((item) => item !== path);
+    });
+  };
+
+  const toggleGroupCollapse = (group: keyof typeof collapsedGroups) => {
+    setCollapsedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+  };
+
+  const GroupHeader = ({
+    id,
+    label,
+    count,
+    selected,
+  }: {
+    id: keyof typeof collapsedGroups;
+    label: string;
+    count: number;
+    selected: number;
+  }) => (
+    <button
+      onClick={() => toggleGroupCollapse(id)}
+      className="w-full flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-500"
+    >
+      <div className="flex items-center gap-2">
+        <span className="font-semibold">{label}</span>
+        <span className="text-[9px] text-gray-600">{selected}/{count}</span>
       </div>
-      <p className="text-[10px] text-gray-500 mb-2">
-        Selecione arquivos ou subpastas para limitar o contexto e acelerar respostas.
-      </p>
-      <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
-        {contextOptions.map((option) => {
-          const checked = selectedContextTargets.includes(option.path);
-          return (
-            <label key={`${option.type}:${option.path}`} className="flex items-center gap-2 text-[11px] text-gray-300">
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => {
-                  setSelectedContextTargets((prev) =>
-                    checked ? prev.filter((p) => p !== option.path) : [...prev, option.path],
-                  );
-                }}
-              />
-              <span className="truncate">{option.type === 'folder' ? `📁 ${option.path}` : option.path}</span>
-            </label>
-          );
-        })}
-      </div>
-    </div>
+      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', collapsedGroups[id] && '-rotate-90')} />
+    </button>
   );
 
+  const ContextSelector = ({ compact = false }: { compact?: boolean }) => (
+    <div className={cn('mb-4 rounded-xl border border-white/10 bg-[#0f0f0f] overflow-hidden', compact && 'mb-3')}>
+      <button
+        onClick={() => setContextCollapsed((value) => !value)}
+        className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">Contexto para IA</span>
+          {selectedContextFiles.length > 0 && (
+            <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/25 px-1.5 py-0.5 rounded-full tabular-nums">
+              {selectedContextFiles.length} arq.
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedContextTargets.length > 0 && !contextCollapsed && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedContextTargets([]);
+              }}
+              className="text-[10px] text-gray-500 hover:text-red-400"
+            >
+              Limpar
+            </button>
+          )}
+          <ChevronDown className={cn('w-3.5 h-3.5 text-gray-600 transition-transform', contextCollapsed && '-rotate-90')} />
+        </div>
+      </button>
+
+      {!contextCollapsed && (
+        <div className="px-3 pb-3 space-y-2.5">
+          <p className="text-[10px] text-gray-600">
+            Selecione pastas e documentos para respostas mais objetivas no estilo LectorBook.
+          </p>
+
+          <div className="flex gap-1.5">
+            <div className="relative flex-1">
+              <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-gray-600" />
+              <input
+                value={contextQuery}
+                onChange={(event) => setContextQuery(event.target.value)}
+                placeholder="Filtrar contexto"
+                className="w-full h-7 rounded-lg bg-black/30 border border-white/10 pl-7 pr-2 text-[10px] text-gray-300 outline-none focus:border-indigo-500/40"
+              />
+            </div>
+            <button
+              onClick={() => setSelectedContextTargets(allContextSelected ? [] : allContextPaths)}
+              className={cn(
+                'h-7 px-2 rounded-lg border text-[10px] transition-colors inline-flex items-center gap-1',
+                allContextSelected
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200',
+              )}
+            >
+              <CheckCheck className="w-3 h-3" />
+              Tudo
+            </button>
+          </div>
+
+          <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
+            {groupedContext.folders.length > 0 && (
+              <div className="space-y-1.5">
+                <GroupHeader
+                  id="folders"
+                  label="Pastas"
+                  count={groupedContext.folders.length}
+                  selected={groupedContext.folders.filter((item) => selectedContextTargets.includes(item.path)).length}
+                />
+                {!collapsedGroups.folders && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {groupedContext.folders.map((option) => {
+                      const selected = selectedContextTargets.includes(option.path);
+                      return (
+                        <button
+                          key={option.path}
+                          onClick={() => toggleContextOption(option.path, !selected)}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] transition-colors',
+                            selected
+                              ? 'bg-indigo-500/15 border-indigo-500/35 text-indigo-200'
+                              : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200',
+                          )}
+                        >
+                          <FolderOpen className="w-3 h-3" />
+                          <span className="truncate max-w-[110px]">{option.path.split('/').pop() ?? option.path}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {groupedContext.learning.length > 0 && (
+              <div className="space-y-1.5">
+                <GroupHeader
+                  id="learning"
+                  label="Resultados de Aprendizagem"
+                  count={groupedContext.learning.length}
+                  selected={groupedContext.learning.filter((item) => selectedContextTargets.includes(item.path)).length}
+                />
+                {!collapsedGroups.learning && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {groupedContext.learning.map((option) => {
+                      const selected = selectedContextTargets.includes(option.path);
+                      const ra = extractRA(option.path);
+                      return (
+                        <button
+                          key={option.path}
+                          onClick={() => toggleContextOption(option.path, !selected)}
+                          title={option.path}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] transition-colors',
+                            selected
+                              ? 'bg-violet-500/15 border-violet-500/35 text-violet-200'
+                              : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200',
+                          )}
+                        >
+                          <span className="px-1 rounded bg-black/30 text-[9px] font-bold">RA{ra}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {groupedContext.docs.length > 0 && (
+              <div className="space-y-1.5">
+                <GroupHeader
+                  id="docs"
+                  label="Documentos"
+                  count={groupedContext.docs.length}
+                  selected={groupedContext.docs.filter((item) => selectedContextTargets.includes(item.path)).length}
+                />
+                {!collapsedGroups.docs && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {groupedContext.docs.map((option) => {
+                      const selected = selectedContextTargets.includes(option.path);
+                      return (
+                        <button
+                          key={option.path}
+                          onClick={() => toggleContextOption(option.path, !selected)}
+                          title={option.path}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] transition-colors',
+                            selected
+                              ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-200'
+                              : 'bg-white/5 border-white/10 text-gray-400 hover:text-gray-200',
+                          )}
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span className="truncate max-w-[130px]">{option.path.split('/').pop() ?? option.path}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {filteredContextOptions.length === 0 && (
+              <p className="text-[10px] text-gray-500">Nenhum resultado para a busca atual.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#0a0a0a] text-gray-100 font-sans selection:bg-indigo-500/30">
       <Header
@@ -346,7 +564,7 @@ export default function App() {
                           <SidebarButtons />
                         </div>
                       </div>
-                      <ContextSelector />
+                      <ContextSelector compact />
                       <div className="flex-1 overflow-hidden flex flex-col">
                         <FileTree files={files} onSelect={handleFileSelect} />
                       </div>
