@@ -115,13 +115,8 @@ export function useAIChat() {
       const analysisText = 'Contexto inicial preparado. Faça sua pergunta para iniciar a tutoria.';
 
       setAnalysis(analysisText);
-      setChatHistory([{
-        role: 'model',
-        content: analysisText,
-        timestamp: Date.now(),
-        relatedLinks: [],
-        isSystemNotice: true,
-      }]);
+      // Mantém o chat inicial sem mensagens para exibir o ContextSelector no painel de boas-vindas.
+      setChatHistory([]);
 
       return analysisText;
     } catch (error) {

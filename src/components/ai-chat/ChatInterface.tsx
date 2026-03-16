@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
+import { useState, useRef, useEffect, useCallback, Dispatch, SetStateAction, ReactNode } from 'react';
 import { MessageSquare, Loader2, Maximize2, Minimize2, Youtube, ExternalLink, Check, Copy, ArrowUp, Mic, Square, Volume2, Pause, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -315,6 +315,7 @@ export const ChatInterface = ({
   isTranscribingAudio = false,
   onSynthesizeAudio,
   isSynthesizingAudio = false,
+  contextSelector,
 }: {
   messages: AnalysisMessage[];
   onSendMessage: (msg: string) => void;
@@ -329,6 +330,7 @@ export const ChatInterface = ({
   isTranscribingAudio?: boolean;
   onSynthesizeAudio: (text: string) => Promise<{ audioBase64: string; mimeType: string }>;
   isSynthesizingAudio?: boolean;
+  contextSelector?: ReactNode;
 }) => {
   const [input, setInput] = useState('');
   const [copiedMessageKey, setCopiedMessageKey] = useState<string | null>(null);
@@ -462,6 +464,9 @@ export const ChatInterface = ({
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
+        {messages.length === 0 && contextSelector && (
+          <div className="max-w-2xl mx-auto">{contextSelector}</div>
+        )}
         {messages.length === 0 && !isThinking && (
           <div className="h-full min-h-[280px] flex items-center justify-center">
             <div className="max-w-2xl text-left bg-[#151515] border border-white/10 rounded-xl p-6 space-y-4">
