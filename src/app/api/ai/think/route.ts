@@ -43,25 +43,36 @@ export async function POST(req: NextRequest) {
     let docsContext = 'Nenhum trecho relevante encontrado para a pergunta.';
     let selectedChunksCount = 0;
 
-    if (isSupabaseConfigured() && repoFullName) {
-      const retrieval = await retrieveWithLangChain({
-        query: retrievalQuery,
-        chatHistory: history || [],
-        repoFullName,
-        apiKey,
-        k: 6,
-      });
-      docsContext = retrieval.renderedContext;
-      selectedChunksCount = retrieval.selectedChunks.length;
-    } else {
-      const retrieval = await buildRelevantContext({
+    try {
+      if (isSupabaseConfigured() && repoFullName) {
+        const retrieval = await retrieveWithLangChain({
+          query: retrievalQuery,
+          chatHistory: history || [],
+          repoFullName,
+          apiKey,
+          k: 6,
+        });
+        docsContext = retrieval.renderedContext;
+        selectedChunksCount = retrieval.selectedChunks.length;
+      } else {
+        const retrieval = await buildRelevantContext({
+          query: retrievalQuery,
+          contextFiles: contextFiles || [],
+          apiKey,
+          maxChunks: 6,
+        });
+        docsContext = retrieval.renderedContext;
+        selectedChunksCount = retrieval.selectedChunks.length;
+      }
+    } catch (retrievalError) {
+      console.warn('[think] Falha na recuperação semântica; aplicando fallback lexical.', retrievalError);
+      const lexicalFallback = await buildRelevantContext({
         query: retrievalQuery,
         contextFiles: contextFiles || [],
-        apiKey,
         maxChunks: 6,
       });
-      docsContext = retrieval.renderedContext;
-      selectedChunksCount = retrieval.selectedChunks.length;
+      docsContext = lexicalFallback.renderedContext;
+      selectedChunksCount = lexicalFallback.selectedChunks.length;
     }
 
     const compactHistory = (history || [])

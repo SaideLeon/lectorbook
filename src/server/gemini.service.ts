@@ -13,5 +13,18 @@ export function getAIClient(apiKey?: string) {
   return aiClient;
 }
 
+/**
+ * Alguns projetos antigos usavam `text-embedding-004`, mas ele pode não estar
+ * disponível em todas as contas/regiões da API Gemini.
+ *
+ * Permitimos override por env para facilitar migração sem tocar no código.
+ */
+export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
+
+/**
+ * Mantemos fallback em `gemini-embedding-001` para fluxos textuais de RAG.
+ */
+export const EMBEDDING_FALLBACK_MODEL = 'gemini-embedding-001';
+
 export const ANALYST_MODEL = 'gemini-3.1-pro-preview';
 export const FALLBACK_MODEL = 'gemini-3-flash-preview';
