@@ -1,5 +1,3 @@
-import { EMBEDDING_FALLBACK_MODEL, EMBEDDING_MODEL, getAIClient } from '@/server/gemini.service';
-
 type ContextFile = { path: string; content: string };
 
 type Chunk = {
@@ -7,14 +5,10 @@ type Chunk = {
   path: string;
   text: string;
   lexicalScore: number;
-  semanticScore: number;
-  finalScore: number;
 };
 
 const CHUNK_SIZE = 1200;
 const CHUNK_OVERLAP = 180;
-const MAX_EMBED_CANDIDATES = 24;
-const embeddingCache = new Map<string, number[]>();
 
 function normalize(text: string) {
   return text
@@ -59,58 +53,6 @@ function lexicalScore(query: string, text: string): number {
   return Math.min(1, tokenCoverage + phraseBoost);
 }
 
-function dot(a: number[], b: number[]): number {
-  let sum = 0;
-  const length = Math.min(a.length, b.length);
-  for (let i = 0; i < length; i += 1) sum += a[i] * b[i];
-  return sum;
-}
-
-function magnitude(vec: number[]): number {
-  let sum = 0;
-  for (const n of vec) sum += n * n;
-  return Math.sqrt(sum);
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  const denom = magnitude(a) * magnitude(b);
-  if (!denom) return 0;
-  return dot(a, b) / denom;
-}
-
-async function embedText(
-  text: string,
-  apiKey?: string,
-  taskType: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY' = 'RETRIEVAL_DOCUMENT',
-): Promise<number[] | null> {
-  const key = `${taskType}:${text.length}:${text.slice(0, 300)}`;
-  if (embeddingCache.has(key)) return embeddingCache.get(key)!;
-
-  const ai = getAIClient(apiKey);
-  const modelsToTry = [EMBEDDING_MODEL, EMBEDDING_FALLBACK_MODEL].filter(
-    (model, index, arr) => arr.indexOf(model) === index,
-  );
-
-  for (const model of modelsToTry) {
-    try {
-      const response: any = await ai.models.embedContent({
-        model,
-        contents: text,
-        config: { taskType },
-      });
-
-      const values = response?.embeddings?.[0]?.values || response?.embedding?.values;
-      if (!Array.isArray(values) || values.length === 0) continue;
-      embeddingCache.set(key, values);
-      return values;
-    } catch {
-      // tenta próximo modelo de embedding disponível para esta conta/chave
-    }
-  }
-
-  return null;
-}
-
 export function createSearchQuery(currentInput: string, history: Array<{ role: string; content: string }> = []): string {
   const lastUserTurns = history
     .filter((h) => h.role === 'user')
@@ -126,7 +68,8 @@ export async function buildRelevantContext(options: {
   apiKey?: string;
   maxChunks?: number;
 }) {
-  const { query, contextFiles, apiKey, maxChunks = 8 } = options;
+  const { query, contextFiles, maxChunks = 8 } = options;
+  void options.apiKey;
 
   const chunks: Chunk[] = [];
   for (const file of contextFiles || []) {
@@ -138,38 +81,18 @@ export async function buildRelevantContext(options: {
         path: file.path,
         text: part,
         lexicalScore: score,
-        semanticScore: 0,
-        finalScore: score,
       });
     });
   }
 
   if (!chunks.length) {
-    return { selectedChunks: [], renderedContext: 'Nenhum arquivo .md/.txt disponível.', warnings: [] as string[] };
+    return { selectedChunks: [], renderedContext: 'Nenhum arquivo selecionado para contexto.', warnings: [] as string[] };
   }
 
-  const lexicalSorted = chunks.sort((a, b) => b.lexicalScore - a.lexicalScore);
-  const embedCandidates = lexicalSorted.slice(0, MAX_EMBED_CANDIDATES);
-
-  const warnings: string[] = [];
-
-  const queryEmbedding = await embedText(query, apiKey, 'RETRIEVAL_QUERY');
-  if (queryEmbedding) {
-    const vectors = await Promise.all(embedCandidates.map((c) => embedText(c.text, apiKey)));
-    embedCandidates.forEach((chunk, i) => {
-      const vec = vectors[i];
-      if (!vec) return;
-      chunk.semanticScore = Math.max(0, cosineSimilarity(queryEmbedding, vec));
-      chunk.finalScore = chunk.lexicalScore * 0.35 + chunk.semanticScore * 0.65;
-    });
-  } else {
-    warnings.push('Embeddings indisponíveis para busca semântica; usando apenas ranking lexical.');
-  }
-
-  const selectedChunks = lexicalSorted
-    .sort((a, b) => b.finalScore - a.finalScore)
+  const selectedChunks = chunks
+    .sort((a, b) => b.lexicalScore - a.lexicalScore)
     .slice(0, maxChunks)
-    .filter((c) => c.finalScore > 0.02 || c.lexicalScore > 0.05);
+    .filter((c) => c.lexicalScore > 0.02);
 
   const grouped = new Map<string, string[]>();
   for (const chunk of selectedChunks) {
@@ -184,5 +107,5 @@ export async function buildRelevantContext(options: {
           .join('\n\n')
       : 'Nenhum trecho relevante encontrado para a pergunta.';
 
-  return { selectedChunks, renderedContext, warnings };
+  return { selectedChunks, renderedContext, warnings: [] as string[] };
 }

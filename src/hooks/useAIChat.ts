@@ -6,8 +6,7 @@ import {
   thinkAndSuggestStream,
   generateReadingSheet as generateReadingSheetService,
   transcribeAudio,
-  synthesizeTextToSpeech,
-  ingestDocuments,
+  synthesizeTextToSpeech
 } from '@/services/ai';
 import { limitTextContext } from '@/utils/textLimiter';
 import { getResponseText } from '@/utils/ai-helpers';
@@ -33,8 +32,7 @@ export function useAIChat() {
   const [keysHydrated, setKeysHydrated] = useState(false);
 
   // ── Session ID (gerado uma vez por mount — identifica a sessão do utilizador) ──
-  // Permite que o Supabase persista o histórico e que o LangChain o recupere
-  // em sessões futuras com o mesmo ID.
+  // Identifica a sessão atual do utilizador durante o chat.
   const [sessionId] = useState<string>(() => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
@@ -43,7 +41,7 @@ export function useAIChat() {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   });
 
-  // ── Repo atual (para filtro Supabase e ingestão) ──────────────────────────
+  // ── Repo atual (apenas para metadados de sessão) ──────────────────────────
   const [currentRepoFullName, setCurrentRepoFullName] = useState<string | undefined>(undefined);
 
   const appendLog = useCallback((log: string) => {
@@ -102,38 +100,6 @@ export function useAIChat() {
     }
   }, []);
 
-  // ── Ingestão no Supabase ──────────────────────────────────────────────────
-
-  /**
-   * Ingere os ficheiros .md/.txt do repositório no Supabase Vector Store.
-   * Chamada de forma assíncrona após o carregamento do repositório.
-   * Se o Supabase não estiver configurado, o servidor ignora silenciosamente.
-   */
-  const ingestRepoFiles = useCallback(async (
-    files: { path: string; content: string }[],
-    repoFullName: string,
-    apiKey?: string,
-  ) => {
-    try {
-      appendLog(`Ingerindo documentos no Supabase (${repoFullName})...`);
-      const result = await ingestDocuments(files, repoFullName, apiKey);
-      if (result.skipped) {
-        appendLog('Supabase não configurado — usando busca em memória.');
-      } else {
-        appendLog(`${result.chunks} chunks ingeridos no Supabase com sucesso.`);
-      }
-    } catch (err) {
-      // Não propaga — ingestão é best-effort
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      const dimensionMismatch = /expected\s+\d+\s+dimensions,\s+not\s+\d+/i.test(errorMessage);
-      appendLog(`Falha na ingestão no Supabase: ${errorMessage}`);
-      if (dimensionMismatch) {
-        appendLog('Possível incompatibilidade de dimensão de embeddings com a coluna vetorial do Supabase (ex.: 768 vs 3072).');
-      }
-      console.warn('[useAIChat] Ingestão no Supabase falhou:', err);
-    }
-  }, [appendLog]);
-
   // ── Análise inicial ───────────────────────────────────────────────────────
 
   const performInitialAnalysis = useCallback(async (
@@ -157,20 +123,12 @@ export function useAIChat() {
         isSystemNotice: true,
       }]);
 
-      // Pré-carrega apenas os documentos para busca semântica.
-      if (repoFullName) {
-        const docFiles = files.filter((f) => /\.(md|txt)$/i.test(f.path));
-        if (docFiles.length > 0) {
-          ingestRepoFiles(docFiles, repoFullName, activeKey);
-        }
-      }
-
       return analysisText;
     } catch (error) {
       console.error('Erro ao preparar contexto inicial:', error);
       throw error;
     }
-  }, [getNextKey, ingestRepoFiles]);
+  }, [getNextKey]);
 
   // ── Envio de mensagem ─────────────────────────────────────────────────────
 
@@ -248,8 +206,8 @@ export function useAIChat() {
           },
         },
         activeKey,
-        sessionId,           // <-- passa sessionId para persistência
-        currentRepoFullName, // <-- passa repoFullName para filtro Supabase
+        sessionId,
+        currentRepoFullName,
       );
 
       if (!streamedText.trim()) throw new Error('A resposta da IA veio vazia.');
