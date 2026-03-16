@@ -1,4 +1,4 @@
-import { getAIClient } from '@/server/gemini.service';
+import { EMBEDDING_MODEL, getAIClient } from '@/server/gemini.service';
 
 type ContextFile = { path: string; content: string };
 
@@ -85,7 +85,7 @@ async function embedText(text: string, apiKey?: string): Promise<number[] | null
   try {
     const ai = getAIClient(apiKey);
     const response: any = await ai.models.embedContent({
-      model: 'text-embedding-004',
+      model: EMBEDDING_MODEL,
       contents: text,
       config: { taskType: 'RETRIEVAL_DOCUMENT' },
     });
