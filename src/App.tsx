@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, FileText, MessageSquare, Files, Eye, Menu, X as CloseIcon, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ export default function App() {
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<ActiveMode>('chat');
+  const [selectedContextTargets, setSelectedContextTargets] = useState<string[]>([]);
 
   // Student profile hook
   const {
@@ -116,6 +117,36 @@ export default function App() {
   }, [selectedFile, maximizedPanel]);
 
   useEffect(() => {
+    if (!repoUrl) {
+      setSelectedContextTargets([]);
+      return;
+    }
+    setSelectedContextTargets([]);
+  }, [repoUrl]);
+
+  const contextOptions = useMemo(() => {
+    const folders = files
+      .filter((f) => f.type === 'tree')
+      .map((f) => ({ path: f.path, type: 'folder' as const }))
+      .slice(0, 30);
+
+    const docs = files
+      .filter((f) => f.type === 'blob' && /\.(md|txt)$/i.test(f.path))
+      .map((f) => ({ path: f.path, type: 'file' as const }))
+      .slice(0, 60);
+
+    return [...folders, ...docs];
+  }, [files]);
+
+  const selectedContextFiles = useMemo(() => {
+    if (selectedContextTargets.length === 0) return [];
+
+    return teachingDocs.filter((doc) =>
+      selectedContextTargets.some((target) => doc.path === target || doc.path.startsWith(`${target}/`)),
+    );
+  }, [teachingDocs, selectedContextTargets]);
+
+  useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('/sw.js').catch(console.error);
   }, []);
@@ -135,7 +166,7 @@ export default function App() {
 
   const handleGenerateReadingSheet = async () => {
     if (!repoUrl || !analysis) return;
-    const contextFiles = teachingDocs.length > 0 ? teachingDocs : selectedFile ? [selectedFile] : [];
+    const contextFiles = selectedContextFiles.length > 0 ? selectedContextFiles : selectedFile ? [selectedFile] : [];
     const loadingToastId = showToast('Gerando ficha de leitura...', 'loading', 0);
     try {
       await generateReadingSheet(repoUrl.split('github.com/')[1], contextFiles);
@@ -203,7 +234,7 @@ export default function App() {
       </button>
       <button
         onClick={activeMode === 'quiz' ? handleBackToChat : handleOpenQuiz}
-        disabled={teachingDocs.length === 0}
+        disabled={selectedContextFiles.length === 0}
         className={cn(
           'text-[10px] border rounded px-2 py-1 flex items-center justify-center gap-2 transition-colors disabled:opacity-40',
           activeMode === 'quiz'
@@ -214,6 +245,37 @@ export default function App() {
         <BookOpen className="w-3 h-3" />
         {activeMode === 'quiz' ? 'Voltar ao Chat' : 'Testar Conhecimento'}
       </button>
+    </div>
+  );
+
+  const ContextSelector = () => (
+    <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-gray-300">Contexto para IA</h3>
+        <span className="text-[10px] text-gray-400">{selectedContextFiles.length} arquivo(s)</span>
+      </div>
+      <p className="text-[10px] text-gray-500 mb-2">
+        Selecione arquivos ou subpastas para limitar o contexto e acelerar respostas.
+      </p>
+      <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+        {contextOptions.map((option) => {
+          const checked = selectedContextTargets.includes(option.path);
+          return (
+            <label key={`${option.type}:${option.path}`} className="flex items-center gap-2 text-[11px] text-gray-300">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => {
+                  setSelectedContextTargets((prev) =>
+                    checked ? prev.filter((p) => p !== option.path) : [...prev, option.path],
+                  );
+                }}
+              />
+              <span className="truncate">{option.type === 'folder' ? `📁 ${option.path}` : option.path}</span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 
@@ -260,6 +322,7 @@ export default function App() {
                   <h2 className="font-semibold truncate text-sm" title={repoUrl}>{repoUrl.split('github.com/')[1]}</h2>
                   <div className="mt-2"><SidebarButtons /></div>
                 </div>
+                <ContextSelector />
                 <FileTree files={files} onSelect={handleFileSelect} />
               </div>
 
@@ -283,6 +346,7 @@ export default function App() {
                           <SidebarButtons />
                         </div>
                       </div>
+                      <ContextSelector />
                       <div className="flex-1 overflow-hidden flex flex-col">
                         <FileTree files={files} onSelect={handleFileSelect} />
                       </div>
@@ -308,7 +372,7 @@ export default function App() {
                   {activeMode === 'quiz' ? (
                     <motion.div key="quiz-panel" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="flex-1 min-h-0">
                       <QuizInterface
-                        allFiles={teachingDocs}
+                        allFiles={selectedContextFiles}
                         apiKey={currentApiKey}
                         onBack={handleBackToChat}
                         onQuizFinished={handleQuizFinished}
@@ -318,7 +382,7 @@ export default function App() {
                     <motion.div key="chat-panel" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="flex-1 min-h-0">
                       <ChatInterface
                         messages={chatHistory}
-                        onSendMessage={(msg) => sendMessage(msg, teachingDocs)}
+                        onSendMessage={(msg) => sendMessage(msg, selectedContextFiles)}
                         isThinking={isThinking}
                         showThinkingState={isWaitingForFirstChunk}
                         processLogs={processLogs}
@@ -370,10 +434,10 @@ export default function App() {
                 >
                   <MessageSquare className="w-5 h-5" /><span className="text-[10px]">Chat</span>
                 </button>
-                <button onClick={handleOpenQuiz} disabled={teachingDocs.length === 0}
+                <button onClick={handleOpenQuiz} disabled={selectedContextFiles.length === 0}
                   className={cn('flex flex-col items-center gap-1 transition-colors',
                     activeMobileTab === 'quiz' ? 'text-emerald-400' : 'text-gray-400 hover:text-white',
-                    teachingDocs.length === 0 && 'opacity-40 cursor-not-allowed'
+                    selectedContextFiles.length === 0 && 'opacity-40 cursor-not-allowed'
                   )}
                 >
                   <BookOpen className="w-5 h-5" /><span className="text-[10px]">Testar</span>

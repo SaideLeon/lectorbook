@@ -3,14 +3,13 @@
  *
  * Rota de chat com streaming.
  * Modelo principal: Groq.
- * Google é usado apenas no pipeline de busca semântica (embeddings), via semantic-search.
+ * Recuperação de contexto: ranking lexical local (sem embeddings).
  */
 
 import { NextRequest } from 'next/server';
 import { groqChatStream } from '@/server/groq.service';
 import { jsonError } from '@/app/api/_utils';
 import { buildRelevantContext, createSearchQuery } from '@/server/semantic-search';
-import { isSupabaseConfigured, retrieveWithLangChain } from '@/server/langchain.service';
 
 type GroqMessage = {
   role: 'user' | 'assistant';
@@ -28,8 +27,6 @@ export async function POST(req: NextRequest) {
       currentInput,
       context,
       contextFiles = [],
-      apiKey,
-      repoFullName,
     } = await req.json();
 
     const nowInMozambique = new Intl.DateTimeFormat('pt-MZ', {
@@ -45,32 +42,18 @@ export async function POST(req: NextRequest) {
     const retrievalWarnings: string[] = [];
 
     try {
-      if (isSupabaseConfigured() && repoFullName) {
-        const retrieval = await retrieveWithLangChain({
-          query: retrievalQuery,
-          chatHistory: history || [],
-          repoFullName,
-          apiKey,
-          k: 6,
-        });
-        docsContext = retrieval.renderedContext;
-        selectedChunksCount = retrieval.selectedChunks.length;
-        retrievalWarnings.push(...retrieval.warnings);
-      } else {
-        const retrieval = await buildRelevantContext({
-          query: retrievalQuery,
-          contextFiles: contextFiles || [],
-          apiKey,
-          maxChunks: 6,
-        });
-        docsContext = retrieval.renderedContext;
-        selectedChunksCount = retrieval.selectedChunks.length;
-        retrievalWarnings.push(...retrieval.warnings);
-      }
+      const retrieval = await buildRelevantContext({
+        query: retrievalQuery,
+        contextFiles: contextFiles || [],
+        maxChunks: 6,
+      });
+      docsContext = retrieval.renderedContext;
+      selectedChunksCount = retrieval.selectedChunks.length;
+      retrievalWarnings.push(...retrieval.warnings);
     } catch (retrievalError) {
       const retrievalMessage = retrievalError instanceof Error ? retrievalError.message : String(retrievalError);
-      console.warn('[think] Falha na recuperação semântica; aplicando fallback lexical.', retrievalMessage);
-      retrievalWarnings.push(`Falha na recuperação semântica: ${retrievalMessage}`);
+      console.warn('[think] Falha na recuperação lexical; aplicando fallback mínimo.', retrievalMessage);
+      retrievalWarnings.push(`Falha na recuperação lexical: ${retrievalMessage}`);
       const lexicalFallback = await buildRelevantContext({
         query: retrievalQuery,
         contextFiles: contextFiles || [],
@@ -103,7 +86,7 @@ export async function POST(req: NextRequest) {
       Processo de resposta:
       1. Explique de forma didática, em linguagem simples e objetiva.
       2. Use exemplos curtos quando necessário.
-      3. Considere apenas o contexto recuperado por busca semântica nos documentos .md/.txt do GitHub.
+      3. Considere apenas o contexto recuperado dos arquivos selecionados do GitHub.
       4. Finalize com uma pergunta para confirmar compreensão.
       5. Nunca comece com saudações — inicie diretamente pelo conteúdo.
 
@@ -123,7 +106,7 @@ export async function POST(req: NextRequest) {
         },
         {
           role: 'user',
-          content: `Trechos recuperados por busca semântica:\n${compactDocsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunksCount}.`,
+          content: `Trechos recuperados por busca lexical:\n${compactDocsContext || 'Nenhum disponível.'}\n\nTotal de trechos selecionados: ${selectedChunksCount}.`,
         },
         ...compactHistory.map((h: any) => ({
           role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
