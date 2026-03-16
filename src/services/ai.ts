@@ -120,7 +120,8 @@ export async function synthesizeTextToSpeech(text: string, apiKey?: string) {
 type StreamEvent =
   | { type: 'chunk'; text: string }
   | { type: 'done'; relatedLinks?: { title: string; url: string }[] }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'log'; level?: 'info' | 'warning' | 'error'; message: string };
 
 export async function thinkAndSuggestStream(
   history: { role: string; content: string }[],
@@ -131,6 +132,7 @@ export async function thinkAndSuggestStream(
     onChunk: (text: string) => void;
     onDone?: (relatedLinks: { title: string; url: string }[]) => void;
     onError?: (message: string, error?: unknown) => void;
+    onLog?: (message: string, level?: 'info' | 'warning' | 'error') => void;
   },
   apiKey?: string,
   sessionId?: string,       // <-- novo: UUID de sessão para persistência
@@ -215,6 +217,7 @@ export async function thinkAndSuggestStream(
         }
         continue;
       }
+      if (event.type === 'log') { callbacks.onLog?.(event.message || '', event.level); continue; }
       if (event.type === 'error') throw new Error(event.message || 'Erro desconhecido no streaming da IA.');
     }
   }
@@ -244,6 +247,7 @@ export async function thinkAndSuggestStream(
         throw error;
       }
     }
+    if (event.type === 'log') callbacks.onLog?.(event.message || '', event.level);
     if (event.type === 'error') throw new Error(event.message || 'Erro desconhecido no streaming da IA.');
   }
 }

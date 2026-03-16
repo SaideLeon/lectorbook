@@ -124,6 +124,12 @@ export function useAIChat() {
       }
     } catch (err) {
       // Não propaga — ingestão é best-effort
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const dimensionMismatch = /expected\s+\d+\s+dimensions,\s+not\s+\d+/i.test(errorMessage);
+      appendLog(`Falha na ingestão no Supabase: ${errorMessage}`);
+      if (dimensionMismatch) {
+        appendLog('Possível incompatibilidade de dimensão de embeddings com a coluna vetorial do Supabase (ex.: 768 vs 3072).');
+      }
       console.warn('[useAIChat] Ingestão no Supabase falhou:', err);
     }
   }, [appendLog]);
@@ -235,6 +241,10 @@ export function useAIChat() {
           onError: (message, callbackError) => {
             const errorDetails = callbackError instanceof Error ? callbackError.message : String(callbackError ?? 'sem detalhes');
             appendLog(`${message} Detalhes: ${errorDetails}`);
+          },
+          onLog: (message, level) => {
+            const prefix = level === 'warning' ? 'Aviso' : level === 'error' ? 'Erro' : 'Info';
+            appendLog(`${prefix}: ${message}`);
           },
         },
         activeKey,

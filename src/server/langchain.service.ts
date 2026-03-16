@@ -223,7 +223,7 @@ export async function retrieveWithLangChain(options: {
   repoFullName?: string;
   apiKey?: string;
   k?: number;
-}): Promise<{ renderedContext: string; selectedChunks: Document[] }> {
+}): Promise<{ renderedContext: string; selectedChunks: Document[]; warnings: string[] }> {
   const { query, chatHistory, repoFullName, apiKey, k = 8 } = options;
 
   if (!isSupabaseConfigured()) {
@@ -242,6 +242,7 @@ export async function retrieveWithLangChain(options: {
     );
 
   let docs: Document[] = [];
+  const warnings: string[] = [];
 
   // Com histórico: reescreve a query antes da busca
   if (lcHistory.length > 0 && (apiKey || process.env.GEMINI_API_KEY)) {
@@ -277,10 +278,12 @@ export async function retrieveWithLangChain(options: {
         chat_history: lcHistory,
       });
     } catch (err) {
+      const warningMessage = err instanceof Error ? err.message : String(err);
       console.warn(
         '[LangChain] Reescrita de query falhou, usando busca direta:',
-        err instanceof Error ? err.message : err,
+        warningMessage,
       );
+      warnings.push(`Reescrita de query indisponível: ${warningMessage}`);
       // Fallback: busca direta sem reescrita
       docs = await vectorStore.similaritySearch(query, k, filter);
     }
@@ -292,6 +295,7 @@ export async function retrieveWithLangChain(options: {
   return {
     selectedChunks: docs,
     renderedContext: renderDocuments(docs),
+    warnings,
   };
 }
 
