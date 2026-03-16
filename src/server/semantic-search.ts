@@ -145,11 +145,13 @@ export async function buildRelevantContext(options: {
   }
 
   if (!chunks.length) {
-    return { selectedChunks: [], renderedContext: 'Nenhum arquivo .md/.txt disponível.' };
+    return { selectedChunks: [], renderedContext: 'Nenhum arquivo .md/.txt disponível.', warnings: [] as string[] };
   }
 
   const lexicalSorted = chunks.sort((a, b) => b.lexicalScore - a.lexicalScore);
   const embedCandidates = lexicalSorted.slice(0, MAX_EMBED_CANDIDATES);
+
+  const warnings: string[] = [];
 
   const queryEmbedding = await embedText(query, apiKey, 'RETRIEVAL_QUERY');
   if (queryEmbedding) {
@@ -160,6 +162,8 @@ export async function buildRelevantContext(options: {
       chunk.semanticScore = Math.max(0, cosineSimilarity(queryEmbedding, vec));
       chunk.finalScore = chunk.lexicalScore * 0.35 + chunk.semanticScore * 0.65;
     });
+  } else {
+    warnings.push('Embeddings indisponíveis para busca semântica; usando apenas ranking lexical.');
   }
 
   const selectedChunks = lexicalSorted
@@ -180,5 +184,5 @@ export async function buildRelevantContext(options: {
           .join('\n\n')
       : 'Nenhum trecho relevante encontrado para a pergunta.';
 
-  return { selectedChunks, renderedContext };
+  return { selectedChunks, renderedContext, warnings };
 }

@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
 
     let docsContext = 'Nenhum trecho relevante encontrado para a pergunta.';
     let selectedChunksCount = 0;
+    const retrievalWarnings: string[] = [];
 
     try {
       if (isSupabaseConfigured() && repoFullName) {
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
         });
         docsContext = retrieval.renderedContext;
         selectedChunksCount = retrieval.selectedChunks.length;
+        retrievalWarnings.push(...retrieval.warnings);
       } else {
         const retrieval = await buildRelevantContext({
           query: retrievalQuery,
@@ -63,9 +65,12 @@ export async function POST(req: NextRequest) {
         });
         docsContext = retrieval.renderedContext;
         selectedChunksCount = retrieval.selectedChunks.length;
+        retrievalWarnings.push(...retrieval.warnings);
       }
     } catch (retrievalError) {
-      console.warn('[think] Falha na recuperação semântica; aplicando fallback lexical.', retrievalError);
+      const retrievalMessage = retrievalError instanceof Error ? retrievalError.message : String(retrievalError);
+      console.warn('[think] Falha na recuperação semântica; aplicando fallback lexical.', retrievalMessage);
+      retrievalWarnings.push(`Falha na recuperação semântica: ${retrievalMessage}`);
       const lexicalFallback = await buildRelevantContext({
         query: retrievalQuery,
         contextFiles: contextFiles || [],
@@ -129,6 +134,14 @@ export async function POST(req: NextRequest) {
 
       return new ReadableStream({
         start(controller) {
+          for (const warning of retrievalWarnings) {
+            controller.enqueue(
+              encoder.encode(
+                `${JSON.stringify({ type: 'log', level: 'warning', message: warning })}\n`,
+              ),
+            );
+          }
+
           groqChatStream({
             messages: groqMessages,
             systemInstruction,
