@@ -3,6 +3,10 @@
 # AI Studio injeta automaticamente em runtime a partir dos secrets do utilizador.
 GEMINI_API_KEY="MY_GEMINI_API_KEY"
 
+# Modelo de embeddings (opcional): o padrão é gemini-embedding-001.
+# Recomendado para cenários apenas de texto (RAG textual).
+GEMINI_EMBEDDING_MODEL=
+
 # ─── URL da Aplicação ──────────────────────────────────────────────────────────
 # URL onde a aplicação está hospedada.
 # AI Studio injeta automaticamente com o URL do serviço Cloud Run.
