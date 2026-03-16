@@ -23,6 +23,7 @@ import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts
 import { createHistoryAwareRetriever } from 'langchain/chains/history_aware_retriever';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { EMBEDDING_MODEL } from '@/server/gemini.service';
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ function getSupabaseClient(): SupabaseClient {
 function getDocumentEmbeddings(apiKey?: string): GoogleGenerativeAIEmbeddings {
   return new GoogleGenerativeAIEmbeddings({
     apiKey: apiKey ?? process.env.GEMINI_API_KEY ?? '',
-    modelName: 'text-embedding-004',
+    modelName: EMBEDDING_MODEL,
     taskType: 'RETRIEVAL_DOCUMENT' as any,
   });
 }
@@ -62,7 +63,7 @@ function getDocumentEmbeddings(apiKey?: string): GoogleGenerativeAIEmbeddings {
 function getQueryEmbeddings(apiKey?: string): GoogleGenerativeAIEmbeddings {
   return new GoogleGenerativeAIEmbeddings({
     apiKey: apiKey ?? process.env.GEMINI_API_KEY ?? '',
-    modelName: 'text-embedding-004',
+    modelName: EMBEDDING_MODEL,
     taskType: 'RETRIEVAL_QUERY' as any,
   });
 }
@@ -124,7 +125,7 @@ class SupabaseChatMessageHistory {
 // ─── Splitter (configuração RAG.txt) ─────────────────────────────────────────
 
 const splitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 1000,   // ~250 tokens — abaixo do limite do text-embedding-004
+  chunkSize: 1000,   // ~250 tokens — abaixo do limite típico dos modelos de embedding
   chunkOverlap: 200, // mantém contexto entre chunks adjacentes
   separators: ['\n\n', '\n', '. ', ' ', ''], // prefere quebrar em parágrafos
 });
