@@ -154,10 +154,23 @@ export default function App() {
 
     if (defaultContextAppliedRepoRef.current === repoUrl || contextOptions.length === 0) return;
 
-    const defaultAulaFiles = contextOptions
+    const aulaFiles = contextOptions
       .filter((option) => option.type === 'file' && option.path.toLowerCase().startsWith('aula/'))
-      .slice(0, 3)
       .map((option) => option.path);
+
+    const namedRaAulaFiles = aulaFiles
+      .map((path) => {
+        const match = path.match(/^aula\/RA(\d+)\.md$/i);
+        return match ? { path, index: Number(match[1]) } : null;
+      })
+      .filter((entry): entry is { path: string; index: number } => entry !== null)
+      .sort((a, b) => a.index - b.index)
+      .slice(-2)
+      .map((entry) => entry.path);
+
+    const defaultAulaFiles = (namedRaAulaFiles.length > 0
+      ? namedRaAulaFiles
+      : aulaFiles.slice(-2));
 
     setSelectedContextTargets(defaultAulaFiles);
     defaultContextAppliedRepoRef.current = repoUrl;
