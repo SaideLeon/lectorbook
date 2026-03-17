@@ -13,6 +13,7 @@ import {
   Search,
   CheckCheck,
   SlidersHorizontal,
+  Radio,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ import { FileTree } from '@/components/file-explorer/FileTree';
 import { FileViewer } from '@/components/file-explorer/FileViewer';
 import { ChatInterface } from '@/components/ai-chat/ChatInterface';
 import { QuizInterface } from '@/components/quiz/QuizInterface';
+import { LiveVoicePanel } from '@/components/live-voice/LiveVoicePanel';
 
 // Student components
 import { StudentProfileModal } from '@/components/student/StudentProfileModal';
@@ -37,8 +39,8 @@ import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { useToast } from '@/components/ui/Toast';
 import { QuizQuestion } from '@/types';
 
-type MobileTab = 'files' | 'chat' | 'preview' | 'quiz';
-type ActiveMode = 'chat' | 'quiz';
+type MobileTab = 'files' | 'chat' | 'preview' | 'quiz' | 'live';
+type ActiveMode = 'chat' | 'quiz' | 'live';
 
 export default function App() {
   const { showToast, hideToast } = useToast();
@@ -119,7 +121,7 @@ export default function App() {
     handleKeyFileUpload
   } = useAIChat();
 
-  // Reset quiz mode when repository is cleared
+  // Reset mode when repository is cleared
   useEffect(() => {
     if (!repoUrl) setActiveMode('chat');
   }, [repoUrl]);
@@ -178,7 +180,6 @@ export default function App() {
 
   const selectedContextFiles = useMemo(() => {
     if (selectedContextTargets.length === 0) return [];
-
     return teachingDocs.filter((doc) =>
       selectedContextTargets.some((target) => doc.path === target || doc.path.startsWith(`${target}/`)),
     );
@@ -196,7 +197,6 @@ export default function App() {
       openLogin();
       return;
     }
-
     setActiveMode('chat');
     await analyzeRepository(url, performInitialAnalysis);
     setActiveMobileTab('chat');
@@ -219,10 +219,23 @@ export default function App() {
     }
   };
 
-  const handleOpenQuiz = () => { setActiveMode('quiz'); setActiveMobileTab('quiz'); setIsSidebarOpen(false); };
-  const handleBackToChat = () => { setActiveMode('chat'); setActiveMobileTab('chat'); };
+  const handleOpenQuiz = () => {
+    setActiveMode('quiz');
+    setActiveMobileTab('quiz');
+    setIsSidebarOpen(false);
+  };
 
-  // Quiz finished — now also receives questions + answers for DB storage
+  const handleOpenLive = () => {
+    setActiveMode('live');
+    setActiveMobileTab('live');
+    setIsSidebarOpen(false);
+  };
+
+  const handleBackToChat = () => {
+    setActiveMode('chat');
+    setActiveMobileTab('chat');
+  };
+
   const handleQuizFinished = useCallback(async (
     score: number,
     total: number,
@@ -283,6 +296,20 @@ export default function App() {
         <BookOpen className="w-3 h-3" />
         {activeMode === 'quiz' ? 'Voltar ao Chat' : 'Testar Conhecimento'}
       </button>
+
+      {/* Live voice button */}
+      <button
+        onClick={activeMode === 'live' ? handleBackToChat : handleOpenLive}
+        className={cn(
+          'text-[10px] border rounded px-2 py-1 flex items-center justify-center gap-2 transition-colors',
+          activeMode === 'live'
+            ? 'bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border-violet-500/30'
+            : 'bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border-indigo-500/30'
+        )}
+      >
+        <Radio className="w-3 h-3" />
+        {activeMode === 'live' ? 'Voltar ao Chat' : 'Conversa ao Vivo'}
+      </button>
     </div>
   );
 
@@ -309,7 +336,6 @@ export default function App() {
     const docs = filteredContextOptions.filter(
       (option) => option.type === 'file' && extractRA(option.path) === null,
     );
-
     return { folders, learning, docs };
   }, [extractRA, filteredContextOptions]);
 
@@ -385,7 +411,7 @@ export default function App() {
       {!contextCollapsed && (
         <div className="px-3 pb-3 space-y-2.5">
           <p className="text-[10px] text-gray-600">
-            Selecione pastas e documentos para respostas mais objetivas no estilo LectorBook.
+            Selecione pastas e documentos para respostas mais objetivas.
           </p>
 
           <div className="flex gap-1.5">
@@ -522,6 +548,7 @@ export default function App() {
       )}
     </div>
   );
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#0a0a0a] text-gray-100 font-sans selection:bg-indigo-500/30">
       <Header
@@ -600,7 +627,11 @@ export default function App() {
               <div className={cn(
                 'h-full flex flex-col gap-4 transition-all duration-300 pb-16 lg:pb-0',
                 maximizedPanel === 'chat' ? 'lg:col-span-12' : (selectedFile ? 'lg:col-span-5' : 'lg:col-span-9'),
-                maximizedPanel === 'file' ? 'hidden' : (activeMobileTab !== 'chat' && activeMobileTab !== 'quiz' ? 'hidden lg:flex' : 'flex')
+                maximizedPanel === 'file' ? 'hidden' : (
+                  activeMobileTab !== 'chat' && activeMobileTab !== 'quiz' && activeMobileTab !== 'live'
+                    ? 'hidden lg:flex'
+                    : 'flex'
+                )
               )}>
                 {repoError && (
                   <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-xl text-xs relative overflow-hidden">
@@ -617,6 +648,14 @@ export default function App() {
                         apiKey={currentApiKey}
                         onBack={handleBackToChat}
                         onQuizFinished={handleQuizFinished}
+                      />
+                    </motion.div>
+                  ) : activeMode === 'live' ? (
+                    <motion.div key="live-panel" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="flex-1 min-h-0">
+                      <LiveVoicePanel
+                        contextFiles={selectedContextFiles}
+                        apiKey={currentApiKey}
+                        onBack={handleBackToChat}
                       />
                     </motion.div>
                   ) : (
@@ -683,6 +722,13 @@ export default function App() {
                   )}
                 >
                   <BookOpen className="w-5 h-5" /><span className="text-[10px]">Testar</span>
+                </button>
+                <button onClick={handleOpenLive}
+                  className={cn('flex flex-col items-center gap-1 transition-colors',
+                    activeMobileTab === 'live' ? 'text-violet-400' : 'text-gray-400 hover:text-white'
+                  )}
+                >
+                  <Radio className="w-5 h-5" /><span className="text-[10px]">Ao Vivo</span>
                 </button>
                 {selectedFile && (
                   <button onClick={() => setActiveMobileTab('preview')}
