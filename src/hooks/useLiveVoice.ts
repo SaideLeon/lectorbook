@@ -25,7 +25,7 @@ function buildSystemInstruction(files: { path: string; content: string }[]): str
   const hasContext = files.length > 0;
   const contextBlock = hasContext
     ? `\n\nMATERIAL DE ESTUDO (use exclusivamente este conteúdo para responder):\n\n${files
-        .map(f => `=== ${f.path} ===\n${f.content.slice(0, 4000)}`)
+        .map(f => `=== ${f.path} ===\n${f.content.slice(0, 1000000)}`)
         .join('\n\n---\n\n')}`
     : '';
 
