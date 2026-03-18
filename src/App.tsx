@@ -157,12 +157,19 @@ export default function App() {
     if (defaultContextAppliedRepoRef.current === repoUrl || contextOptions.length === 0) return;
 
     const aulaFiles = contextOptions
-      .filter((option) => option.type === 'file' && option.path.toLowerCase().startsWith('aula/'))
+      .filter((option) =>
+        option.type === 'file' && (
+          option.path.toLowerCase().startsWith('aulas/') ||
+          option.path.toLowerCase().startsWith('aula/') ||
+          option.path.toLowerCase().includes('/aulas/') ||
+          option.path.toLowerCase().includes('/aula/')
+        )
+      )
       .map((option) => option.path);
 
     const namedRaAulaFiles = aulaFiles
       .map((path) => {
-        const match = path.match(/^aula\/RA(\d+)\.md$/i);
+        const match = path.match(/RA(\d+)\.md$/i);
         return match ? { path, index: Number(match[1]) } : null;
       })
       .filter((entry): entry is { path: string; index: number } => entry !== null)
