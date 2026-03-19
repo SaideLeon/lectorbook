@@ -12,7 +12,7 @@ export interface TranscriptTurn {
   role: 'user' | 'model';
   text: string;
   interrupted?: boolean;
-  highlightIndex: number; // índice da palavra atual; -1 = highlight concluído/inactivo
+  highlightIndex: number; // índice da palavra actual; -1 = highlight concluído/inactivo
 }
 
 const MAX_TURNS = 30;
@@ -63,18 +63,21 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
   const [status, setStatus]     = useState<LiveSessionStatus>('idle');
   const [isActive, setIsActive] = useState(false);
   const [error, setError]       = useState<string | null>(null);
-
-  // ── Fase 1: array de turnos acumulados (substitui { user, model }) ────────
-  const [turns, setTurns] = useState<TranscriptTurn[]>([]);
+  const [turns, setTurns]       = useState<TranscriptTurn[]>([]);
 
   const { startInput, stopInput, volume, isMuted, toggleMute } = useAudioInput();
   const { startOutput, stopOutput, enqueueAudio, clearQueue }   = useAudioOutput();
 
-  const sessionRef            = useRef<any>(null);
-  const highlightIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionRef             = useRef<any>(null);
+  const highlightIntervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Refs de controlo de turnos ────────────────────────────────────────────
+  // Um balão permanece aberto enquanto o mesmo locutor está activo.
+  // Fecha apenas quando o locutor muda (utilizador → IA ou IA → utilizador).
+  const currentUserTurnIdRef  = useRef<string | null>(null);
   const currentModelTurnIdRef = useRef<string | null>(null);
 
-  // ── Fase 2: Highlight progressivo ────────────────────────────────────────
+  // ── Highlight progressivo ─────────────────────────────────────────────────
 
   const clearHighlight = useCallback(() => {
     if (highlightIntervalRef.current) {
@@ -83,11 +86,6 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
     }
   }, []);
 
-  /**
-   * Inicia um setInterval que avança `highlightIndex` palavra a palavra.
-   * Quando o índice atinge o fim do texto, o intervalo é limpo e
-   * highlightIndex volta a -1 (texto exibido normalmente).
-   */
   const startHighlight = useCallback((turnId: string, wordCount: number) => {
     clearHighlight();
     let index = 0;
@@ -115,6 +113,8 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
     setStatus('idle');
     stopInput();
     stopOutput();
+    currentUserTurnIdRef.current  = null;
+    currentModelTurnIdRef.current = null;
     if (sessionRef.current) {
       try { sessionRef.current.close(); } catch { /* ignore */ }
       sessionRef.current = null;
@@ -127,6 +127,7 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
     setError(null);
     setStatus('connecting');
     setTurns([]);
+    currentUserTurnIdRef.current  = null;
     currentModelTurnIdRef.current = null;
 
     const resolvedKey = apiKey ??
@@ -157,31 +158,59 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
           },
 
           onmessage: (message: LiveServerMessage) => {
-            // ── Áudio ────────────────────────────────────────────────────
+            // ── Áudio do modelo ──────────────────────────────────────────
             const parts = message.serverContent?.modelTurn?.parts ?? [];
             for (const part of parts) {
               if (part.inlineData?.data) enqueueAudio(part.inlineData.data);
             }
 
-            // ── Transcrição do utilizador ─────────────────────────────
-            // inputTranscription chega como uma utterance completa após silêncio
+            // ── Transcrição do UTILIZADOR ────────────────────────────────
+            // Cada evento inputTranscription representa um segmento de fala
+            // reconhecida após detecção de pausa (VAD). Acumulamos todos os
+            // segmentos num único balão enquanto o utilizador continua a ser
+            // o locutor activo (i.e., a IA ainda não respondeu).
             const userText = message.serverContent?.inputTranscription?.text;
             if (userText?.trim()) {
-              const id = `user-${Date.now()}`;
-              setTurns(prev =>
-                [...prev, {
-                  id,
-                  role: 'user' as const,
-                  text: userText.trim(),
-                  highlightIndex: -1,   // utilizador nunca tem highlight
-                }].slice(-MAX_TURNS),
-              );
+              // Se não há turno de utilizador aberto, criar um novo.
+              if (!currentUserTurnIdRef.current) {
+                currentUserTurnIdRef.current = `user-${Date.now()}`;
+              }
+              const turnId = currentUserTurnIdRef.current;
+
+              setTurns(prev => {
+                const existing = prev.find(t => t.id === turnId);
+                if (existing) {
+                  // Acumula texto no balão existente (separa segmentos com espaço)
+                  return prev.map(t =>
+                    t.id === turnId
+                      ? { ...t, text: `${t.text} ${userText.trim()}`.trim() }
+                      : t,
+                  );
+                }
+                // Cria o balão do utilizador
+                return [
+                  ...prev,
+                  {
+                    id: turnId,
+                    role: 'user' as const,
+                    text: userText.trim(),
+                    highlightIndex: -1,
+                  },
+                ].slice(-MAX_TURNS);
+              });
             }
 
-            // ── Transcrição do modelo ─────────────────────────────────
-            // outputTranscription pode chegar em vários chunks → acumula no mesmo turno
+            // ── Transcrição do MODELO ────────────────────────────────────
+            // Quando a IA começa a responder:
+            //   1. Fecha o turno do utilizador (próxima fala = novo balão).
+            //   2. Abre (ou actualiza) o balão da IA.
+            // O texto do modelo chega de forma cumulativa por evento, por isso
+            // substituímos em vez de acumular.
             const modelText = message.serverContent?.outputTranscription?.text;
             if (modelText?.trim()) {
+              // Fechar turno do utilizador — próxima fala abrirá novo balão
+              currentUserTurnIdRef.current = null;
+
               if (!currentModelTurnIdRef.current) {
                 currentModelTurnIdRef.current = `model-${Date.now()}`;
               }
@@ -189,12 +218,14 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
               const words  = modelText.trim().split(/\s+/).filter(Boolean);
 
               setTurns(prev => {
-                const last = prev[prev.length - 1];
-                // Actualiza o turno em curso se o id já existe
-                if (last?.id === turnId) {
-                  return [...prev.slice(0, -1), { ...last, text: modelText.trim() }];
+                const existing = prev.find(t => t.id === turnId);
+                if (existing) {
+                  // Actualiza o texto (cumulativo)
+                  return prev.map(t =>
+                    t.id === turnId ? { ...t, text: modelText.trim() } : t,
+                  );
                 }
-                // Cria novo turno do modelo com highlight a começar na palavra 0
+                // Cria o balão da IA com highlight a começar na palavra 0
                 return [
                   ...prev,
                   {
@@ -206,16 +237,19 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
                 ].slice(-MAX_TURNS);
               });
 
-              // Fase 2: inicia highlight para o número total de palavras recebidas
               startHighlight(turnId, words.length);
             }
 
-            // ── Turno completo ────────────────────────────────────────
+            // ── Turno do modelo completo ──────────────────────────────────
+            // A IA terminou de falar: fecha o balão da IA.
+            // O próximo segmento do utilizador abrirá um novo balão seu.
             if (message.serverContent?.turnComplete) {
               currentModelTurnIdRef.current = null;
             }
 
-            // ── Interrupção ───────────────────────────────────────────
+            // ── Interrupção ───────────────────────────────────────────────
+            // Utilizador interrompeu a IA: marca o balão da IA como interrompido
+            // e limpa o turno, pronto para nova fala do utilizador.
             if (message.serverContent?.interrupted) {
               clearQueue();
               clearHighlight();
@@ -274,7 +308,7 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
     isActive,
     status,
     error,
-    turns,         // substituiu `transcription`
+    turns,
     volume,
     isMuted,
     toggleMute,
