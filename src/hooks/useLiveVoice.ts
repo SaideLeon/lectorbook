@@ -168,13 +168,14 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
             const userText = message.serverContent?.inputTranscription?.text;
             if (userText?.trim()) {
               const id = `user-${Date.now()}`;
-              const userTurn: TranscriptTurn = {
-                id,
-                role: 'user',
-                text: userText.trim(),
-                highlightIndex: -1,   // utilizador nunca tem highlight
-              };
-              setTurns(prev => [...prev, userTurn].slice(-MAX_TURNS));
+              setTurns(prev =>
+                [...prev, {
+                  id,
+                  role: 'user' as const,
+                  text: userText.trim(),
+                  highlightIndex: -1,   // utilizador nunca tem highlight
+                }].slice(-MAX_TURNS),
+              );
             }
 
             // ── Transcrição do modelo ─────────────────────────────────
@@ -196,7 +197,12 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
                 // Cria novo turno do modelo com highlight a começar na palavra 0
                 return [
                   ...prev,
-                  { id: turnId, role: 'model', text: modelText.trim(), highlightIndex: 0 },
+                  {
+                    id: turnId,
+                    role: 'model' as const,
+                    text: modelText.trim(),
+                    highlightIndex: 0,
+                  },
                 ].slice(-MAX_TURNS);
               });
 
