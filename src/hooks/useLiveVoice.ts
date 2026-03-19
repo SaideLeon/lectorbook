@@ -168,14 +168,13 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
             const userText = message.serverContent?.inputTranscription?.text;
             if (userText?.trim()) {
               const id = `user-${Date.now()}`;
-              setTurns(prev =>
-                [...prev, {
-                  id,
-                  role: 'user',
-                  text: userText.trim(),
-                  highlightIndex: -1,   // utilizador nunca tem highlight
-                }].slice(-MAX_TURNS),
-              );
+              const userTurn: TranscriptTurn = {
+                id,
+                role: 'user',
+                text: userText.trim(),
+                highlightIndex: -1,   // utilizador nunca tem highlight
+              };
+              setTurns(prev => [...prev, userTurn].slice(-MAX_TURNS));
             }
 
             // ── Transcrição do modelo ─────────────────────────────────
