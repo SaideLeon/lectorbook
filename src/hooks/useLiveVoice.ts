@@ -171,7 +171,7 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
               setTurns(prev =>
                 [...prev, {
                   id,
-                  role: 'user',
+                  role: 'user' as const,
                   text: userText.trim(),
                   highlightIndex: -1,   // utilizador nunca tem highlight
                 }].slice(-MAX_TURNS),
@@ -197,7 +197,12 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
                 // Cria novo turno do modelo com highlight a começar na palavra 0
                 return [
                   ...prev,
-                  { id: turnId, role: 'model', text: modelText.trim(), highlightIndex: 0 },
+                  {
+                    id: turnId,
+                    role: 'model' as const,
+                    text: modelText.trim(),
+                    highlightIndex: 0,
+                  },
                 ].slice(-MAX_TURNS);
               });
 
