@@ -220,9 +220,11 @@ export function useLiveVoice({ contextFiles, apiKey }: UseLiveVoiceProps) {
               setTurns(prev => {
                 const existing = prev.find(t => t.id === turnId);
                 if (existing) {
-                  // Actualiza o texto (cumulativo)
+                  // Acumula o chunk no balão existente (igual ao utilizador)
                   return prev.map(t =>
-                    t.id === turnId ? { ...t, text: modelText.trim() } : t,
+                    t.id === turnId
+                      ? { ...t, text: `${t.text} ${modelText.trim()}`.trim() }
+                      : t,
                   );
                 }
                 // Cria o balão da IA com highlight a começar na palavra 0
